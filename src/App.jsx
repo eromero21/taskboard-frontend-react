@@ -23,8 +23,8 @@ function App() {
 
   async function handleCreateCard() {
     let cardData = {};
-    cardData.title = "Get outta my head";
-    cardData.description = "I'm a card n shit man.";
+    cardData.title = "DJ Spitz";
+    cardData.description = "I'ma soundcloud rapper man.";
 
     const newCard = await createCard(cardData);
     setBoard(prevBoard => ({
