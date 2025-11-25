@@ -24,7 +24,11 @@ export async function createCard(cardInfo) {
     const response = await fetch(`${URL}/cards`,
         {
             method: "POST",
-            body: JSON.stringify(cardInfo)
+            headers: {"Content-Type": "application/json"},
+            body: JSON.stringify({
+                title: cardInfo.title,
+                description: cardInfo.description
+            }),
         });
 
     if (!response.ok) {

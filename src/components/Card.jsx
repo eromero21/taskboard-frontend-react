@@ -1,9 +1,9 @@
-
-function Card(cardInfo) {
+function Card({cardInfo}) {
     return (
-      <>
-          <p>{cardInfo.title}</p>
-      </>
+      <div className="card">
+          <h2>{cardInfo.title}</h2>
+          <p>{cardInfo.description}</p>
+      </div>
     );
 }
 

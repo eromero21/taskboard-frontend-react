@@ -1,9 +1,10 @@
+import Column from "./Column.jsx";
 
-function ColumnList({columnData}) {
+function ColumnList({columnsData}) {
     return (
       <div className="column-list">
-          {columnData.map((column, i) => (
-              <p key={column.id}>Column number {i}, Name: {column.name}</p>
+          {columnsData.map((column) => (
+              <Column key={column.id} columnData={column} />
           ))}
       </div>
     );
