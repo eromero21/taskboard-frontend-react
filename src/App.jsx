@@ -41,7 +41,7 @@ function App() {
 
   function handleDragEnd(event) {
     const { active, over } = event;
-
+    console.log("ActiveID: ", active.id, "OverID: ", over.id);
     if (!over) { return; }
 
     const activeId = active.id;
@@ -57,8 +57,24 @@ function App() {
 
       if (!fromColumn || !toColumn) {return prevBoard;}
 
+      const fromColIdx = columns.findIndex(column => column.id === fromColumn.id);
+      const toColIdx = columns.findIndex(column => column.id === toColumn.id);
 
-    })
+      const fromCards = [...fromColumn.cards];
+      const toCards = fromColumn.id === toColumn.id ? fromCards : [...toColumn.cards];
+
+      const fromCardIdx = fromCards.find(card => card.id === active.id)
+      const toCardIdx = toCards.find(card => card.id === over.id)
+
+      const [move] = fromCards.splice(fromCardIdx, 1);
+      toCards.splice(toCardIdx, 0, move);
+
+      const newColumns = [...columns];
+      newColumns[fromColIdx] = {...fromColumn, cards: fromCards};
+      newColumns[toColIdx] = {...toColumn, cards: toCards};
+
+      return {...prevBoard, columns: newColumns};
+    });
   }
 
   return (

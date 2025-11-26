@@ -7,10 +7,12 @@ function Column({columnData}) {
             <div className="column-header">
                 <h2>{columnData.name}</h2>
             </div>
-            <SortableContext className="column-cards" items={columnData.cards.map(cardData => cardData.id)}>
-                {columnData.cards?.map((cardData) => (
+            <SortableContext items={columnData.cards.map(cardData => cardData.id)}>
+                <div className="column-cards">
+                    {columnData.cards?.map((cardData) => (
                 <Card key={cardData.id} cardInfo={cardData} />
                 ))}
+                </div>
             </SortableContext>
         </div>
     )
