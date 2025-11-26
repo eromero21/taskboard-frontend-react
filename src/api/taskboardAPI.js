@@ -42,11 +42,31 @@ export async function editCard(cardId, cardInfo) {
     const response = await fetch(`${URL}/cards/${cardId}/edit`,
         {
             method: "PATCH",
-            body: JSON.stringify(cardInfo)
+            body: JSON.stringify({
+                columnId: cardInfo.columnId,
+                description: cardInfo.description,
+                title: cardInfo.title,
+            })
         });
 
     if (!response.ok) {
         throw new Error(response.statusText + "\n Could not update card");
+    }
+
+    return response.json();
+}
+
+export async function moveCard(cardId, cardInfo) {
+    const response = await fetch(`${URL}/cards/${cardId}/move`,
+        {
+            method: "PATCH",
+            body: JSON.stringify({
+                columnId: cardInfo.columnId,
+            })
+        });
+
+    if (!response.ok) {
+        throw new Error(response.statusText + "\n Could not move card");
     }
 
     return response.json();

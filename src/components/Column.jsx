@@ -1,4 +1,5 @@
 import Card from "./Card.jsx";
+import {SortableContext} from "@dnd-kit/sortable";
 
 function Column({columnData}) {
     return (
@@ -6,11 +7,11 @@ function Column({columnData}) {
             <div className="column-header">
                 <h2>{columnData.name}</h2>
             </div>
-            <div className="column-cards">
+            <SortableContext className="column-cards" items={columnData.cards.map(cardData => cardData.id)}>
                 {columnData.cards?.map((cardData) => (
                 <Card key={cardData.id} cardInfo={cardData} />
                 ))}
-            </div>
+            </SortableContext>
         </div>
     )
 }

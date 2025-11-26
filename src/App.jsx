@@ -1,6 +1,5 @@
 import './App.css';
-import { getBoard, getCards,
-  editCard, deleteCard, createCard } from "./api/taskboardAPI.js";
+import {createCard, getBoard, moveCard} from "./api/taskboardAPI.js";
 import ColumnList from "./components/columnList";
 import {useEffect, useState} from "react";
 import {DndContext} from "@dnd-kit/core";
@@ -35,9 +34,31 @@ function App() {
     }));
   }
 
+  function searchColumnIdByCardId(columns, cardId) {
+    return columns.find((column) =>
+        column.cards.some((card) => card.id === cardId));
+  }
+
   function handleDragEnd(event) {
     const { active, over } = event;
-    console.log("Dragged", active.id, "over", over?.id);
+
+    if (!over) { return; }
+
+    const activeId = active.id;
+    const overId = over.id;
+
+    if (activeId === overId) { return;}
+
+    setBoard(prevBoard => {
+      const columns = [...prevBoard.columns];
+
+      const fromColumn = searchColumnIdByCardId(columns, activeId);
+      const toColumn = searchColumnIdByCardId(columns, overId);
+
+      if (!fromColumn || !toColumn) {return prevBoard;}
+
+
+    })
   }
 
   return (

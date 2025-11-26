@@ -32,11 +32,29 @@
   min-height: 100vh;
 }
 
+.column-header {
+  text-align: center;
+}
+
 .card {
   border: 1px solid white;
   border-radius: 5px;
   padding: 10px;
   margin-top: 10px;
+}
+
+.card:hover {
+  border: 1px solid gray;
+  background-color: darkblue;
+  cursor: grab;
+}
+
+.card:active {
+  cursor: grabbing;
+}
+
+.card-header {
+  text-align: center;
 }
 
 button {
