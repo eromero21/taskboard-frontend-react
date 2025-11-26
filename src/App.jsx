@@ -4,6 +4,8 @@ import ColumnList from "./components/columnList";
 import {useEffect, useState} from "react";
 import {DndContext, DragOverlay} from "@dnd-kit/core";
 import Card from "./components/Card.jsx";
+import {FontAwesomeIcon} from "@fortawesome/react-fontawesome";
+import {faPlus} from "@fortawesome/free-solid-svg-icons";
 
 function App() {
   const [board, setBoard] = useState(null);
@@ -13,7 +15,6 @@ function App() {
     const fetchData = async () => {
       const res = await getBoard();
       setBoard(res);
-      console.log(res);
     }
     fetchData();
   }, []);
@@ -63,7 +64,6 @@ function App() {
       setActiveCard(null);
       return;
     }
-    console.log("ActiveID: ", active.id, "OverID: ", over.id);
 
     const activeId = active.id;
     const overId = over.id;
@@ -81,7 +81,6 @@ function App() {
     setBoard(newBoard);
 
     try {
-      console.log(data.card.id);
       await moveCard(data.card.id, data.card);
     } catch (err) {
       console.error(err);
@@ -135,7 +134,11 @@ function App() {
   return (
       <DndContext onDragEnd={handleDragEnd} onDragCancel={handleDragCancel} onDragStart={handleDragStart}>
         <div className="app-root">
-          <button onClick={handleCreateCard}>Create default card</button>
+          <button onClick={handleCreateCard}>Create default card
+            <span className="button-plus-sign">
+              <FontAwesomeIcon icon={faPlus} />
+            </span>
+          </button>
           <ColumnList className="columns" columnsData={board.columns} />
         </div>
 
