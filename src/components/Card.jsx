@@ -4,11 +4,12 @@ import { CSS } from "@dnd-kit/utilities";
 function Card({cardInfo}) {
     const id = cardInfo.id;
     const {attributes, listeners, setNodeRef,
-        transform, transition} = useSortable({id});
+        transform, transition, isDragging} = useSortable({id});
 
     const style = {
-        transition,
+        transition: isDragging ? undefined : transition,
         transform: CSS.Transform.toString(transform),
+        opacity: isDragging ? 0.8 : 1,
     };
 
     return (

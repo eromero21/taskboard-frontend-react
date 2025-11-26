@@ -42,6 +42,7 @@ export async function editCard(cardId, cardInfo) {
     const response = await fetch(`${URL}/cards/${cardId}/edit`,
         {
             method: "PATCH",
+            headers: {"Content-Type": "application/json"},
             body: JSON.stringify({
                 columnId: cardInfo.columnId,
                 description: cardInfo.description,
@@ -60,6 +61,7 @@ export async function moveCard(cardId, cardInfo) {
     const response = await fetch(`${URL}/cards/${cardId}/move`,
         {
             method: "PATCH",
+            headers: {"Content-Type": "application/json"},
             body: JSON.stringify({
                 columnId: cardInfo.columnId,
             })
