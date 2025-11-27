@@ -33,6 +33,19 @@ function App() {
     setShowCreateCard(false);
   }
 
+  async function handleCreateCard(cardData) {
+    const newCard = await createCard(cardData);
+
+    setBoard(prevBoard => ({
+      ...prevBoard,
+      columns: prevBoard.columns.map(column =>
+          column.id === newCard.columnId ? { ...column, cards: [...column.cards, newCard] } : column,
+      )
+    }));
+
+    setShowCreateCard(false);
+  }
+
   function searchColumnIdByCardId(columns, cardId) {
     return columns.find((column) =>
         column.cards.some((card) => card.id === cardId));
@@ -136,7 +149,8 @@ function App() {
               <FontAwesomeIcon icon={faPlus} />
             </span>
           </button>
-          <CreateCard display={showCreateCard} onClose={handleCloseCreateCard} />
+          <CreateCard display={showCreateCard} onClose={handleCloseCreateCard}
+          onCreateCard={handleCreateCard} />
 
           <ColumnList className="columns" columnsData={board.columns} />
         </div>

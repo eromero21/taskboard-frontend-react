@@ -77,13 +77,15 @@
 }
 
 .create-card {
+  display: flex;
+  flex-direction: column;
   background-color: #1a1a1a;
   color: white;
   padding: 2rem;
   border-radius: 5px;
   min-width: 50vw;
   max-width: 90vw;
-  min-height: 70vh;
+  min-height: 50vh;
   max-height: 90vh;
   position: relative;
   border: 1px solid white;
@@ -118,7 +120,8 @@
   color: red;
 }
 
-.create-card-submit {
-  display: block;
-  margin: 5rem auto 0 auto;
+.create-card-footer {
+  margin-top: auto;
+  padding-top: 10px;
+  align-self: center;
 }

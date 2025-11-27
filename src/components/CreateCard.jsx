@@ -1,9 +1,8 @@
 import {FontAwesomeIcon} from "@fortawesome/react-fontawesome";
 import {faX} from "@fortawesome/free-solid-svg-icons";
 import {useState} from "react";
-import {createCard} from "../api/taskboardAPI.js";
 
-function CreateCard({display, onClose}) {
+function CreateCard({display, onClose, onCreateCard}) {
     const [title, setTitle] = useState("");
     const [description, setDescription] = useState("");
 
@@ -11,18 +10,20 @@ function CreateCard({display, onClose}) {
         return null;
     }
 
-    async function handleCreateCard() {
-        let cardData = {};
-        cardData.title = "DJ Spitz";
-        cardData.description = "I'ma soundcloud rapper man.";
+    async function handleSubmit(event) {
+        event.preventDefault();
 
-        const newCard = await createCard(cardData);
-        setBoard(prevBoard => ({
-            ...prevBoard,
-            columns: prevBoard.columns.map(column =>
-                column.id === newCard.columnId ? { ...column, cards: [...column.cards, newCard] } : column,
-            )
-        }));
+        if (!title.trim()) {
+            return;
+        }
+
+        await onCreateCard({
+            title,
+            description
+        });
+
+        setTitle("");
+        setDescription("");
     }
 
     return (
@@ -34,7 +35,7 @@ function CreateCard({display, onClose}) {
                     <FontAwesomeIcon icon={faX} />
                 </button>
                 <form className="create-card-fields">
-                    <label>Enter card title: *<br/>
+                    <label>Enter card title: <span className="req-field">*</span><br/>
                         <input type="text" name="title"
                                className="create-card-title" placeholder="My Important Task"
                         onChange={(e) => setTitle(e.target.value)}/><br/>
@@ -44,9 +45,11 @@ function CreateCard({display, onClose}) {
                                placeholder="This task is very important" rows={4}
                         onChange={(e) => setDescription(e.target.value)}/><br/>
                     </label>
-                    <p>* <span className="req-field">- Required Field</span></p>
+                    <p><span className="req-field">* - Required Field</span></p>
                 </form>
-                <button className="create-card-submit" onClick={handleCreateCard}>Submit</button>
+                <div className="create-card-footer">
+                    <button className="create-card-submit" onClick={handleSubmit}>Submit</button>
+                </div>
             </div>
         </div>
     );
