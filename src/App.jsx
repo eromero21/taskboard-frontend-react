@@ -6,10 +6,12 @@ import {DndContext, DragOverlay} from "@dnd-kit/core";
 import Card from "./components/Card.jsx";
 import {FontAwesomeIcon} from "@fortawesome/react-fontawesome";
 import {faPlus} from "@fortawesome/free-solid-svg-icons";
+import CreateCard from "./components/CreateCard.jsx";
 
 function App() {
   const [board, setBoard] = useState(null);
   const [activeCard, setActiveCard] = useState(null);
+  const [showCreateCard, setShowCreateCard] = useState(false);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -23,18 +25,12 @@ function App() {
     return <p>Loading..</p>;
   }
 
-  async function handleCreateCard() {
-    let cardData = {};
-    cardData.title = "DJ Spitz";
-    cardData.description = "I'ma soundcloud rapper man.";
+  function handleShowCreateCard() {
+    setShowCreateCard(true);
+  }
 
-    const newCard = await createCard(cardData);
-    setBoard(prevBoard => ({
-      ...prevBoard,
-      columns: prevBoard.columns.map(column =>
-        column.id === newCard.columnId ? { ...column, cards: [...column.cards, newCard] } : column,
-      )
-    }));
+  function handleCloseCreateCard() {
+    setShowCreateCard(false);
   }
 
   function searchColumnIdByCardId(columns, cardId) {
@@ -134,11 +130,14 @@ function App() {
   return (
       <DndContext onDragEnd={handleDragEnd} onDragCancel={handleDragCancel} onDragStart={handleDragStart}>
         <div className="app-root">
-          <button onClick={handleCreateCard}>Create default card
+
+          <button onClick={handleShowCreateCard}>Create New Card
             <span className="button-plus-sign">
               <FontAwesomeIcon icon={faPlus} />
             </span>
           </button>
+          <CreateCard display={showCreateCard} onClose={handleCloseCreateCard} />
+
           <ColumnList className="columns" columnsData={board.columns} />
         </div>
 
