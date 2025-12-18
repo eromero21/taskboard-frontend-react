@@ -17,9 +17,11 @@ function CreateCard({display, onClose, onCreateCard}) {
             return;
         }
 
+        const finalDesc = description.trim() || "No description given.";
+
         await onCreateCard({
             title,
-            description
+            description: finalDesc,
         });
 
         setTitle("");

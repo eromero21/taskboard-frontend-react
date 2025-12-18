@@ -1,5 +1,6 @@
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
+import CardManagement from "./CardManagement.jsx";
 
 function Card({cardInfo}) {
     const id = cardInfo.id;
@@ -19,6 +20,7 @@ function Card({cardInfo}) {
           <div className="card-header">
             <h2>{cardInfo.title}</h2>
           </div>
+          <CardManagement />
           <p>{cardInfo.description}</p>
       </div>
     );

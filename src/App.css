@@ -42,6 +42,7 @@
 }
 
 .card {
+  position: relative;
   border: 1px solid white;
   border-radius: 5px;
   padding: 5px;
@@ -50,7 +51,7 @@
 
 .card:hover {
   border: 1px solid gray;
-  background-color: darkblue;
+  background-color: #1e1e1e;
   cursor: grab;
 }
 
@@ -124,4 +125,39 @@
   margin-top: auto;
   padding-top: 10px;
   align-self: center;
+}
+
+.card-management {
+  position: absolute;
+  background: transparent;
+  top: 0.5rem;
+  right: 0.5rem;
+  display: inline-block;
+}
+
+.menu-btn {
+  padding: 1px 2px 1px 2px;
+  position: relative;
+  font-size: 18px;
+  border: none;
+  background: none;
+  cursor: pointer;
+  letter-spacing: 1px;
+  min-width: 24px;
+  min-height: 24px;
+}
+
+.menu-popup {
+  position: absolute;
+  top: calc(100% + 0.5rem);
+  right: 0;
+  z-index: 1000;
+}
+
+.menu-item {
+
+}
+
+.menu-item-del {
+  color: red;
 }
