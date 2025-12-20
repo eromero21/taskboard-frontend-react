@@ -2,7 +2,7 @@ import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import CardManagement from "./CardManagement.jsx";
 
-function Card({cardInfo, onEdit}) {
+function Card({cardInfo, onEdit, onDelete}) {
     const id = cardInfo.id;
     const {attributes, listeners, setNodeRef,
         transform, transition, isDragging} = useSortable({id});
@@ -20,7 +20,7 @@ function Card({cardInfo, onEdit}) {
           <div className="card-header">
             <h2>{cardInfo.title}</h2>
           </div>
-          <CardManagement onEdit={() => onEdit(cardInfo)} />
+          <CardManagement onEdit={() => onEdit(cardInfo)} onDelete={() => onDelete(cardInfo.id)} />
           <p>{cardInfo.description}</p>
       </div>
     );

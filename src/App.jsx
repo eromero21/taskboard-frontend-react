@@ -1,5 +1,5 @@
 import './App.css';
-import {createCard, getBoard, moveCard, editCard} from "./api/taskboardAPI.js";
+import {createCard, getBoard, moveCard, editCard, deleteCard} from "./api/taskboardAPI.js";
 import ColumnList from "./components/columnList";
 import {useEffect, useState} from "react";
 import {DndContext, DragOverlay} from "@dnd-kit/core";
@@ -14,13 +14,20 @@ function App() {
   const [showCreateCard, setShowCreateCard] = useState(false);
   const [editingCard, setEditingCard] = useState(null);
 
+  const columnsOrder = ["BACKLOG", "TODO", "IN_PROGRESS", "COMPLETED"];
+
   useEffect(() => {
     const fetchData = async () => {
       const res = await getBoard();
-      setBoard(res);
+      const normColumns = columnsOrder.map(key => res.columns[key]);
+      setBoard({
+        ...res,
+        columns: normColumns,
+      });
+      console.log(board);
     }
     fetchData();
-  }, []);
+  }, [columnsOrder]);
 
   if (!board || !board.columns) {
     return <p>Loading..</p>;
@@ -75,6 +82,23 @@ function App() {
     setEditingCard(null);
   }
 
+  async function handleDeleteCard(cardId) {
+    if (!cardId) {
+      return;
+    }
+    console.log("Card deleted: ", cardId.trim());
+    const deletedCard = await deleteCard(cardId.trim());
+    console.log("Card deleted: ", deletedCard);
+
+    setBoard(prevBoard => ({
+      ...prevBoard,
+      columns: prevBoard.columns.map(column => ({
+        ...column,
+        cards: column.cards.filter((card) => card.id !== deletedCard.id),
+      }))
+    }));
+  }
+
   function searchColumnIdByCardId(columns, cardId) {
     return columns.find((column) =>
         column.cards.some((card) => card.id === cardId));
@@ -97,7 +121,7 @@ function App() {
   }
 
   async function handleDragEnd(event) {
-    const { active, over } = event;
+    const {active, over} = event;
     if (!over) {
       setActiveCard(null);
       return;
@@ -117,13 +141,18 @@ function App() {
     }
 
     setBoard(newBoard);
+    console.log(board);
 
     try {
       await moveCard(data.card.id, data.card);
     } catch (err) {
       console.error(err);
       const resetBoard = await getBoard();
-      setBoard(resetBoard);
+      const normColumns = columnsOrder.map(key => resetBoard.columns[key]);
+      setBoard({
+        ...resetBoard,
+        columns: normColumns,
+      });
     }
   }
 
@@ -184,7 +213,8 @@ function App() {
           <CardModal display={editingCard !== null} onClose={handleDoneEditCard}
           onSubmit={handleEditCard} initialCard={editingCard} />
 
-          <ColumnList className="columns" columnsData={board.columns} onEdit={handleStartEditCard} />
+          <ColumnList className="columns" columnsData={board.columns}
+                      onEdit={handleStartEditCard} onDelete={handleDeleteCard} />
         </div>
 
         <DragOverlay>

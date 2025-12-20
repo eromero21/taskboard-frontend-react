@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import {FontAwesomeIcon} from "@fortawesome/react-fontawesome";
 import {faEdit, faTrashCan} from "@fortawesome/free-solid-svg-icons";
 
-function CardManagement({onEdit}) {
+function CardManagement({onEdit, onDelete}) {
     const [open, setOpen] = useState(false);
     const rootRef = useRef(null);
 
@@ -70,6 +70,7 @@ function CardManagement({onEdit}) {
                         }}
                         onClick={() => {
                             setOpen(false);
+                            onDelete();
                             console.log("Delete action occurring..");
                         }}
                         >
