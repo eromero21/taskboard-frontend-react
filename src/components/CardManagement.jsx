@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import {FontAwesomeIcon} from "@fortawesome/react-fontawesome";
 import {faEdit, faTrashCan} from "@fortawesome/free-solid-svg-icons";
 
-function CardManagement() {
+function CardManagement({onEdit}) {
     const [open, setOpen] = useState(false);
     const rootRef = useRef(null);
 
@@ -22,7 +22,7 @@ function CardManagement() {
 
         document.addEventListener('mousedown', onOutsideClick);
         return () => { document.removeEventListener('mousedown', onOutsideClick); };
-    })
+    }, [open]);
 
     return (
         <div ref={rootRef} className="card-management">
@@ -55,6 +55,7 @@ function CardManagement() {
                         }}
                         onClick={() => {
                             setOpen(false);
+                            onEdit();
                             console.log("Edit action occurring..");
                         }}
                         >

@@ -1,10 +1,20 @@
 import {FontAwesomeIcon} from "@fortawesome/react-fontawesome";
 import {faX} from "@fortawesome/free-solid-svg-icons";
-import {useState} from "react";
+import {useEffect, useState} from "react";
 
-function CreateCard({display, onClose, onCreateCard}) {
+function CardModal({display, onClose, onSubmit, initialCard = null}) {
+    const isEdit = Boolean(initialCard);
+
     const [title, setTitle] = useState("");
     const [description, setDescription] = useState("");
+
+    useEffect(() => {
+        if (!display) {return;}
+
+        // eslint-disable-next-line react-hooks/set-state-in-effect
+        setTitle(initialCard?.title ?? "");
+        setDescription(initialCard?.description ?? "");
+    }, [display, initialCard]);
 
     if (!display) {
         return null;
@@ -13,14 +23,17 @@ function CreateCard({display, onClose, onCreateCard}) {
     async function handleSubmit(event) {
         event.preventDefault();
 
-        if (!title.trim()) {
+        const finalTitle = title.trim();
+        if (!finalTitle) {
             return;
         }
 
         const finalDesc = description.trim() || "No description given.";
+        const cardId = initialCard ? initialCard.id : null;
 
-        await onCreateCard({
-            title,
+        await onSubmit({
+            id: cardId,
+            title: finalTitle,
             description: finalDesc,
         });
 
@@ -32,19 +45,19 @@ function CreateCard({display, onClose, onCreateCard}) {
         <div className="create-card-backdrop" onClick={onClose}>
             <div className="create-card"
                  onClick={(e) => e.stopPropagation()}>
-                <h1 className="create-card-header">Create Card</h1>
+                <h1 className="create-card-header">{isEdit ? "Edit Card" : "Create Card"}</h1>
                 <button className="create-card-close" onClick={onClose}>
                     <FontAwesomeIcon icon={faX} />
                 </button>
                 <form className="create-card-fields">
                     <label>Enter card title: <span className="req-field">*</span><br/>
                         <input type="text" name="title"
-                               className="create-card-title" placeholder="My Important Task"
+                               className="create-card-title" placeholder="My Important Task" value={title}
                         onChange={(e) => setTitle(e.target.value)}/><br/>
                     </label>
                     <label>Enter card description:<br/>
                         <textarea name="description" className="create-card-description"
-                               placeholder="This task is very important" rows={4}
+                               placeholder="This task is very important" value={description} rows={4}
                         onChange={(e) => setDescription(e.target.value)}/><br/>
                     </label>
                     <p><span className="req-field">* - Required Field</span></p>
@@ -57,4 +70,4 @@ function CreateCard({display, onClose, onCreateCard}) {
     );
 }
 
-export default CreateCard;
+export default CardModal;

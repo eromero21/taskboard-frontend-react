@@ -1,17 +1,18 @@
 import './App.css';
-import {createCard, getBoard, moveCard} from "./api/taskboardAPI.js";
+import {createCard, getBoard, moveCard, editCard} from "./api/taskboardAPI.js";
 import ColumnList from "./components/columnList";
 import {useEffect, useState} from "react";
 import {DndContext, DragOverlay} from "@dnd-kit/core";
 import Card from "./components/Card.jsx";
 import {FontAwesomeIcon} from "@fortawesome/react-fontawesome";
 import {faPlus} from "@fortawesome/free-solid-svg-icons";
-import CreateCard from "./components/CreateCard.jsx";
+import CardModal from "./components/CardModal.jsx";
 
 function App() {
   const [board, setBoard] = useState(null);
   const [activeCard, setActiveCard] = useState(null);
   const [showCreateCard, setShowCreateCard] = useState(false);
+  const [editingCard, setEditingCard] = useState(null);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -33,6 +34,14 @@ function App() {
     setShowCreateCard(false);
   }
 
+  function handleStartEditCard(card) {
+    setEditingCard(card);
+  }
+
+  function handleDoneEditCard() {
+    setEditingCard(null);
+  }
+
   async function handleCreateCard(cardData) {
     const newCard = await createCard(cardData);
 
@@ -44,6 +53,26 @@ function App() {
     }));
 
     setShowCreateCard(false);
+  }
+
+  async function handleEditCard(cardData) {
+    if (!editingCard) {
+      return;
+    }
+
+    const editedCard = await editCard(cardData.id, cardData);
+
+    setBoard(prevBoard => ({
+      ...prevBoard,
+      columns: prevBoard.columns.map(column => ({
+        ...column,
+        cards: column.cards.map((card) =>
+          card.id === editedCard.id ? editedCard : card
+        ),
+      }))
+    }));
+
+    setEditingCard(null);
   }
 
   function searchColumnIdByCardId(columns, cardId) {
@@ -149,10 +178,13 @@ function App() {
               <FontAwesomeIcon icon={faPlus} />
             </span>
           </button>
-          <CreateCard display={showCreateCard} onClose={handleCloseCreateCard}
-          onCreateCard={handleCreateCard} />
+          <CardModal display={showCreateCard} onClose={handleCloseCreateCard}
+                     onSubmit={handleCreateCard} />
 
-          <ColumnList className="columns" columnsData={board.columns} />
+          <CardModal display={editingCard !== null} onClose={handleDoneEditCard}
+          onSubmit={handleEditCard} initialCard={editingCard} />
+
+          <ColumnList className="columns" columnsData={board.columns} onEdit={handleStartEditCard} />
         </div>
 
         <DragOverlay>
