@@ -1,5 +1,5 @@
 import './App.css';
-import {createCard, getBoard, moveCard, editCard, deleteCard} from "./api/taskboardAPI.js";
+import {createCard, getBoard, moveCard, editCard, deleteCard, getBoardById} from "./api/taskboardAPI.js";
 import ColumnList from "./components/columnList";
 import {useEffect, useState} from "react";
 import {DndContext, DragOverlay} from "@dnd-kit/core";
@@ -8,26 +8,30 @@ import {FontAwesomeIcon} from "@fortawesome/react-fontawesome";
 import {faPlus} from "@fortawesome/free-solid-svg-icons";
 import CardModal from "./components/CardModal.jsx";
 
+const columnsOrder = ["BACKLOG", "TODO", "IN_PROGRESS", "COMPLETED"];
+
 function App() {
   const [board, setBoard] = useState(null);
+  const [boardId, setBoardId] = useState(null);
   const [activeCard, setActiveCard] = useState(null);
   const [showCreateCard, setShowCreateCard] = useState(false);
   const [editingCard, setEditingCard] = useState(null);
-
-  const columnsOrder = ["BACKLOG", "TODO", "IN_PROGRESS", "COMPLETED"];
 
   useEffect(() => {
     const fetchData = async () => {
       const res = await getBoard();
       const normColumns = columnsOrder.map(key => res.columns[key]);
+
+      setBoardId(res.id);
       setBoard({
         ...res,
         columns: normColumns,
       });
-      console.log(board);
+
     }
-    fetchData();
-  }, [columnsOrder]);
+
+    void fetchData();
+  }, []);
 
   if (!board || !board.columns) {
     return <p>Loading..</p>;
@@ -50,7 +54,7 @@ function App() {
   }
 
   async function handleCreateCard(cardData) {
-    const newCard = await createCard(cardData);
+    const newCard = await createCard(boardId, cardData);
 
     setBoard(prevBoard => ({
       ...prevBoard,
@@ -67,7 +71,7 @@ function App() {
       return;
     }
 
-    const editedCard = await editCard(cardData.id, cardData);
+    const editedCard = await editCard(boardId, cardData.id, cardData);
 
     setBoard(prevBoard => ({
       ...prevBoard,
@@ -144,10 +148,10 @@ function App() {
     console.log(board);
 
     try {
-      await moveCard(data.card.id, data.card);
+      await moveCard(boardId, data.card.id, data.card);
     } catch (err) {
       console.error(err);
-      const resetBoard = await getBoard();
+      const resetBoard = await getBoardById(boardId);
       const normColumns = columnsOrder.map(key => resetBoard.columns[key]);
       setBoard({
         ...resetBoard,

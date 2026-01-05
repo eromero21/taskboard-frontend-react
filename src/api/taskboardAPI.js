@@ -10,6 +10,42 @@ export async function getBoard() {
     return response.json();
 }
 
+export async function getBoards() {
+    const response = await fetch(`${URL}/boards`);
+
+    if (!response.ok) {
+        throw new Error(response.statusText + "\n Could not fetch boards");
+    }
+
+    return response.json();
+}
+
+export async function getBoardById(boardId) {
+    const response = await fetch(`${URL}/boards/${boardId}`);
+
+    if (!response.ok) {
+        throw new Error(response.statusText + "\n Could not fetch board with given ID.");
+    }
+
+    return response.json();
+}
+
+export async function createBoard(boardName) {
+    const response = await fetch(`${URL}/boards`, {
+        method: "POST",
+        headers: {"Content-Type": "application/json"},
+        body: JSON.stringify({
+            name: boardName,
+        }),
+    });
+
+    if (!response.ok) {
+        throw new Error(response.statusText + "\n Could not create board");
+    }
+
+    return response.json();
+}
+
 export async function getCards() {
     const response = await fetch(`${URL}/cards`);
 
@@ -20,8 +56,8 @@ export async function getCards() {
     return response.json();
 }
 
-export async function createCard(cardInfo) {
-    const response = await fetch(`${URL}/cards`,
+export async function createCard(boardId, cardInfo) {
+    const response = await fetch(`${URL}/boards/${boardId}/cards`,
         {
             method: "POST",
             headers: {"Content-Type": "application/json"},
@@ -38,8 +74,8 @@ export async function createCard(cardInfo) {
     return response.json();
 }
 
-export async function editCard(cardId, cardInfo) {
-    const response = await fetch(`${URL}/cards/${cardId}/edit`,
+export async function editCard(boardId, cardId, cardInfo) {
+    const response = await fetch(`${URL}/boards/${boardId}/cards/${cardId}/edit`,
         {
             method: "PATCH",
             headers: {"Content-Type": "application/json"},
@@ -57,8 +93,8 @@ export async function editCard(cardId, cardInfo) {
     return response.json();
 }
 
-export async function moveCard(cardId, cardInfo) {
-    const response = await fetch(`${URL}/cards/${cardId}/move`,
+export async function moveCard(boardId, cardId, cardInfo) {
+    const response = await fetch(`${URL}/boards/${boardId}/cards/${cardId}/move`,
         {
             method: "PATCH",
             headers: {"Content-Type": "application/json"},
