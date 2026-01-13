@@ -1,15 +1,5 @@
 const URL = "http://localhost:8080/api";
 
-export async function getBoard() {
-    const response = await fetch(`${URL}/board`);
-
-    if (!response.ok) {
-        throw new Error(response.statusText + "\n Could not fetch board");
-    }
-
-    return response.json();
-}
-
 export async function getBoards() {
     const response = await fetch(`${URL}/boards`);
 
@@ -46,16 +36,6 @@ export async function createBoard(boardName) {
     return response.json();
 }
 
-export async function getCards() {
-    const response = await fetch(`${URL}/cards`);
-
-    if (!response.ok) {
-        throw new Error(response.statusText + "\n Could not fetch cards");
-    }
-
-    return response.json();
-}
-
 export async function createCard(boardId, cardInfo) {
     const response = await fetch(`${URL}/boards/${boardId}/cards`,
         {
@@ -80,9 +60,8 @@ export async function editCard(boardId, cardId, cardInfo) {
             method: "PATCH",
             headers: {"Content-Type": "application/json"},
             body: JSON.stringify({
-                columnId: cardInfo.columnId,
-                description: cardInfo.description,
                 title: cardInfo.title,
+                description: cardInfo.description,
             })
         });
 
@@ -110,15 +89,15 @@ export async function moveCard(boardId, cardId, cardInfo) {
     return response.json();
 }
 
-export async function deleteCard(cardId) {
-    const response = await fetch(`${URL}/cards/${cardId}/delete`,
+export async function deleteCard(boardId, cardId) {
+    const response = await fetch(`${URL}/boards/${boardId}/cards/${cardId}/delete`,
         {
             method: "DELETE"
         });
 
-    if (!response.ok) {
+    if (response.status !== 204) {
         throw new Error(response.statusText + "\n Could not delete card");
     }
 
-    return response.json();
+    console.log("Deletion successful.");
 }

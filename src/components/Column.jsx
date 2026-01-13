@@ -4,7 +4,7 @@ import {useDroppable} from "@dnd-kit/core";
 
 function Column({columnData, onEdit, onDelete}) {
     const {setNodeRef} = useDroppable({
-        id: columnData.id,
+        id: columnData.type,
     })
 
     return (
@@ -13,7 +13,7 @@ function Column({columnData, onEdit, onDelete}) {
                 <h2>{columnData.name}</h2>
             </div>
             <div className="column-cards">
-                <SortableContext id={columnData.id} items={columnData.cards.map(cardData => cardData.id)}>
+                <SortableContext id={columnData.type} items={columnData.cards.map(cardData => cardData.id)}>
                     {columnData.cards?.map((cardData) => (
                     <Card key={cardData.id} cardInfo={cardData} onEdit={onEdit} onDelete={onDelete} />
                 ))}
