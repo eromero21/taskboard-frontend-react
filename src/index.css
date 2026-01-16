@@ -37,10 +37,10 @@ h1 {
   line-height: 1.1;
 }
 
-button {
+button, select {
   background-color: #1a1a1a !important;
   color: white;
-  margin: 10px auto auto 20px;
+  margin: 10px auto auto 10px;
   border-radius: 8px;
   border: 1px solid white;
   padding: 0.6em 1.2em;
@@ -50,7 +50,7 @@ button {
   cursor: pointer;
   transition: border-color 0.25s;
 }
-button:hover {
+button:hover, select:hover {
   border-color: #646cff;
 }
 button:focus,

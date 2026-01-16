@@ -1,5 +1,13 @@
 import './App.css';
-import {createCard, moveCard, editCard, deleteCard, getBoardById, getBoards} from "./api/taskboardAPI.js";
+import {
+  createCard,
+  moveCard,
+  editCard,
+  deleteCard,
+  getBoardById,
+  getBoards,
+  createBoard
+} from "./api/taskboardAPI.js";
 import ColumnList from "./components/columnList";
 import {useEffect, useState} from "react";
 import {DndContext, DragOverlay} from "@dnd-kit/core";
@@ -7,6 +15,7 @@ import Card from "./components/Card.jsx";
 import {FontAwesomeIcon} from "@fortawesome/react-fontawesome";
 import {faPlus} from "@fortawesome/free-solid-svg-icons";
 import CardModal from "./components/CardModal.jsx";
+import BoardModal from "./components/BoardModal.jsx";
 
 const columnsOrder = ["BACKLOG", "TODO", "IN_PROGRESS", "COMPLETED"];
 
@@ -24,6 +33,8 @@ function App() {
   const [activeBoardId, setActiveBoardId] = useState(null);
   const [activeBoard, setActiveBoard] = useState(null);
   const [boardList, setBoardList] = useState([]);
+  const [showCreateBoard, setShowCreateBoard] = useState(false);
+
   const [activeCard, setActiveCard] = useState(null);
   const [showCreateCard, setShowCreateCard] = useState(false);
   const [editingCard, setEditingCard] = useState(null);
@@ -76,6 +87,14 @@ function App() {
     return <p>Loading..</p>;
   }
 
+  function handleShowCreateBoard() {
+    setShowCreateBoard(true);
+  }
+
+  function handleCloseCreateBoard() {
+    setShowCreateBoard(false);
+  }
+
   function handleShowCreateCard() {
     setShowCreateCard(true);
   }
@@ -90,6 +109,18 @@ function App() {
 
   function handleDoneEditCard() {
     setEditingCard(null);
+  }
+
+  async function handleCreateBoard(boardData) {
+    const newBoard = await createBoard(boardData);
+
+    // UseEffect will assign normalized board
+    setActiveBoardId(newBoard.id);
+
+    const freshBoards = await getBoards();
+    setBoardList(freshBoards);
+
+    setShowCreateBoard(false);
   }
 
   async function handleCreateCard(cardData) {
@@ -237,30 +268,39 @@ function App() {
       <DndContext onDragEnd={handleDragEnd} onDragCancel={handleDragCancel} onDragStart={handleDragStart}>
         <div className="app-root">
 
-          <button >
-            <span className="button-plus-sign">
-                <FontAwesomeIcon icon={faPlus} />
-              </span>
-            Create New Board
-          </button>
+          <div className="nav-bar-container">
+            <div className="nav-bar-left">
+              <button onClick={handleShowCreateBoard}>
+                <span className="button-plus-sign">
+                    <FontAwesomeIcon icon={faPlus} />
+                  </span>
+                Create New Board
+              </button>
 
-          <button onClick={handleShowCreateCard}>
-            <span className="button-plus-sign">
-                <FontAwesomeIcon icon={faPlus} />
-              </span>
-            Create New Card
-          </button>
+              <button onClick={handleShowCreateCard}>
+                <span className="button-plus-sign">
+                    <FontAwesomeIcon icon={faPlus} />
+                  </span>
+                Create New Card
+              </button>
+            </div>
 
-          <div className="nav-bar">
-            <select value={activeBoardId ?? ""}
-                    onChange={(e) => setActiveBoardId(Number(e.target.value))}>
-              {boardList.map((board) => (
-                  <option key={board.id} value={board.id}>
-                    {board.name}
-                  </option>
-              ))}
-            </select>
+            <div className="nav-bar-center">
+              <div className="board-selection-root">
+                <select value={activeBoardId ?? ""} className="board-selector"
+                        onChange={(e) => setActiveBoardId(Number(e.target.value))}>
+                  {boardList.map((board) => (
+                      <option key={board.id} value={board.id}>
+                        {board.name}
+                      </option>
+                  ))}
+                </select>
+              </div>
+            </div>
           </div>
+
+          <BoardModal display={showCreateBoard} onClose={handleCloseCreateBoard}
+                      onSubmit={handleCreateBoard} />
 
           <CardModal display={showCreateCard} onClose={handleCloseCreateCard}
                      onSubmit={handleCreateCard} />

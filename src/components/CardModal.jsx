@@ -79,7 +79,7 @@ function CardModal({display, onClose, onSubmit, initialCard = null}) {
                             if (e.key === "Enter") {
                                 e.preventDefault();
                             }
-                        }}/><br/>
+                        }} maxLength={50} /><br/>
                     </label>
                     <label>Enter card description:<br/>
                         <textarea name="description" className="create-card-description" onKeyDown={handleKeyDownTextArea}
