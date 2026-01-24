@@ -52,9 +52,9 @@ function BoardModal({display, onClose, onSubmit}) {
                     <FontAwesomeIcon icon={faX} />
                 </button>
                 <form className="create-board-fields" onSubmit={handleSubmit} onKeyDown={handleKeyDown}>
-                    <label>Enter card title: <span className="req-field">*</span><br/>
+                    <label>Enter board title: <span className="req-field">*</span><br/>
                         <input type="text" name="title"
-                               className="create-board-title" placeholder="My Important Task" value={name}
+                               className="create-board-title" placeholder="A Super Cool Board" value={name}
                                onChange={(e) =>
                                    setName(e.target.value)} maxLength={50}/><br/>
                     </label>

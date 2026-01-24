@@ -1,4 +1,4 @@
-const URL = "http://localhost:8080/api";
+const URL = "http://localhost:8080";
 
 export async function getBoards() {
     const response = await fetch(`${URL}/boards`);
