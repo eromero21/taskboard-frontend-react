@@ -1,6 +1,7 @@
 import './App.css';
 import {
   createCard,
+  login,
   moveCard,
   editCard,
   deleteCard,
@@ -8,7 +9,8 @@ import {
   getBoards,
   createBoard
 } from "./api/taskboardAPI.js";
-import ColumnList from "./components/columnList";
+import {clearAuthToken, getAuthToken} from "./api/fetcherAuth.js";
+import ColumnList from "./components/ColumnList.jsx";
 import {useEffect, useState} from "react";
 import {DndContext, DragOverlay} from "@dnd-kit/core";
 import Card from "./components/Card.jsx";
@@ -16,6 +18,7 @@ import {FontAwesomeIcon} from "@fortawesome/react-fontawesome";
 import {faPlus} from "@fortawesome/free-solid-svg-icons";
 import CardModal from "./components/CardModal.jsx";
 import BoardModal from "./components/BoardModal.jsx";
+import LoginPage from "./components/LoginPage.jsx";
 
 const columnsOrder = ["BACKLOG", "TODO", "IN_PROGRESS", "COMPLETED"];
 
@@ -30,6 +33,9 @@ function normalizeColumns(board) {
 }
 
 function App() {
+  const [authToken, setAuthToken] = useState(() => getAuthToken());
+  const [authNotice, setAuthNotice] = useState("");
+  const [isLoadingBoards, setIsLoadingBoards] = useState(false);
   const [activeBoardId, setActiveBoardId] = useState(null);
   const [activeBoard, setActiveBoard] = useState(null);
   const [boardList, setBoardList] = useState([]);
@@ -39,12 +45,57 @@ function App() {
   const [showCreateCard, setShowCreateCard] = useState(false);
   const [editingCard, setEditingCard] = useState(null);
 
+  function isUnauthorizedError(error) {
+    return error instanceof Error && error.message.startsWith("401");
+  }
+
+  function resetBoardState() {
+    setActiveBoardId(null);
+    setActiveBoard(null);
+    setBoardList([]);
+    setShowCreateBoard(false);
+    setShowCreateCard(false);
+    setEditingCard(null);
+    setActiveCard(null);
+  }
+
+  function handleUnauthorizedSession(error) {
+    if (!isUnauthorizedError(error)) {
+      return false;
+    }
+
+    clearAuthToken();
+    setAuthToken(null);
+    setAuthNotice("Your session expired. Please log in again.");
+    resetBoardState();
+    return true;
+  }
+
+  async function handleLogin(credentials) {
+    await login(credentials);
+    setAuthToken(getAuthToken());
+    setAuthNotice("");
+  }
+
+  function handleLogout() {
+    clearAuthToken();
+    setAuthToken(null);
+    setAuthNotice("");
+    resetBoardState();
+  }
+
   // Initial load: Fetching board list
   useEffect(() => {
+    if (!authToken) {
+      resetBoardState();
+      setIsLoadingBoards(false);
+      return;
+    }
+
     (async () => {
+      setIsLoadingBoards(true);
       const boardsSummary = await getBoards();
       setBoardList(boardsSummary);
-      console.log(boardsSummary);
 
       if (!boardsSummary || boardsSummary.length === 0) {
         setActiveBoardId(null);
@@ -59,13 +110,21 @@ function App() {
           prevBoardId && boardsSummary.some((b) => b.id === prevBoardId) ? prevBoardId :
           boardsSummary[0].id;
 
-          setActiveBoardId(initId);
-    })().catch(console.error);
-  }, []);
+      setActiveBoardId(initId);
+    })()
+        .catch((error) => {
+          if (!handleUnauthorizedSession(error)) {
+            console.error(error);
+          }
+        })
+        .finally(() => {
+          setIsLoadingBoards(false);
+        });
+  }, [authToken]);
 
   // If active board changes, grab the board accordingly.
   useEffect(() => {
-    if (activeBoardId == null) {
+    if (!authToken || activeBoardId == null) {
       return;
     }
 
@@ -80,11 +139,15 @@ function App() {
       const board = await getBoardById(activeBoardId);
       const normBoard = normalizeColumns(board);
       setActiveBoard(normBoard);
-    })().catch(console.error);
-  }, [activeBoardId]);
+    })().catch((error) => {
+      if (!handleUnauthorizedSession(error)) {
+        console.error(error);
+      }
+    });
+  }, [activeBoardId, authToken]);
 
-  if (!activeBoard || !activeBoard.columns) {
-    return <p>Loading..</p>;
+  if (!authToken) {
+    return <LoginPage onLogin={handleLogin} notice={authNotice} />;
   }
 
   function handleShowCreateBoard() {
@@ -112,28 +175,40 @@ function App() {
   }
 
   async function handleCreateBoard(boardData) {
-    const newBoard = await createBoard(boardData);
+    try {
+      const newBoard = await createBoard(boardData);
 
-    // UseEffect will assign normalized board
-    setActiveBoardId(newBoard.id);
+      // UseEffect will assign normalized board
+      setActiveBoardId(newBoard.id);
 
-    const freshBoards = await getBoards();
-    setBoardList(freshBoards);
+      const freshBoards = await getBoards();
+      setBoardList(freshBoards);
 
-    setShowCreateBoard(false);
+      setShowCreateBoard(false);
+    } catch (error) {
+      if (!handleUnauthorizedSession(error)) {
+        console.error(error);
+      }
+    }
   }
 
   async function handleCreateCard(cardData) {
-    const newCard = await createCard(activeBoardId, cardData);
+    try {
+      const newCard = await createCard(activeBoardId, cardData);
 
-    setActiveBoard(prevBoard => ({
-      ...prevBoard,
-      columns: prevBoard.columns.map(column =>
-          column.type === newCard.columnId ? { ...column, cards: [...column.cards, newCard] } : column,
-      )
-    }));
+      setActiveBoard(prevBoard => ({
+        ...prevBoard,
+        columns: prevBoard.columns.map(column =>
+            column.type === newCard.columnId ? { ...column, cards: [...column.cards, newCard] } : column,
+        )
+      }));
 
-    setShowCreateCard(false);
+      setShowCreateCard(false);
+    } catch (error) {
+      if (!handleUnauthorizedSession(error)) {
+        console.error(error);
+      }
+    }
   }
 
   async function handleEditCard(cardData) {
@@ -141,35 +216,47 @@ function App() {
       return;
     }
 
-    const editedCard = await editCard(activeBoardId, cardData.id, cardData);
+    try {
+      const editedCard = await editCard(activeBoardId, cardData.id, cardData);
 
-    setActiveBoard(prevBoard => ({
-      ...prevBoard,
-      columns: prevBoard.columns.map(column => ({
-        ...column,
-        cards: column.cards.map((card) =>
-          card.id === editedCard.id ? editedCard : card
-        ),
-      }))
-    }));
+      setActiveBoard(prevBoard => ({
+        ...prevBoard,
+        columns: prevBoard.columns.map(column => ({
+          ...column,
+          cards: column.cards.map((card) =>
+            card.id === editedCard.id ? editedCard : card
+          ),
+        }))
+      }));
 
-    setEditingCard(null);
+      setEditingCard(null);
+    } catch (error) {
+      if (!handleUnauthorizedSession(error)) {
+        console.error(error);
+      }
+    }
   }
 
   async function handleDeleteCard(cardId) {
     if (!cardId) {
       return;
     }
-    console.log("Card deleted: ", cardId);
-    await deleteCard(activeBoardId, cardId);
 
-    setActiveBoard(prevBoard => ({
-      ...prevBoard,
-      columns: prevBoard.columns.map(column => ({
-        ...column,
-        cards: column.cards.filter((card) => card.id !== cardId),
-      }))
-    }));
+    try {
+      await deleteCard(activeBoardId, cardId);
+
+      setActiveBoard(prevBoard => ({
+        ...prevBoard,
+        columns: prevBoard.columns.map(column => ({
+          ...column,
+          cards: column.cards.filter((card) => card.id !== cardId),
+        }))
+      }));
+    } catch (error) {
+      if (!handleUnauthorizedSession(error)) {
+        console.error(error);
+      }
+    }
   }
 
   function searchColumnIdByCardId(columns, cardId) {
@@ -218,6 +305,9 @@ function App() {
     try {
       await moveCard(activeBoardId, currCard.id, currCard);
     } catch (err) {
+      if (handleUnauthorizedSession(err)) {
+        return;
+      }
       console.error(err);
       const resetBoard = await getBoardById(activeBoardId);
       setActiveBoard(normalizeColumns(resetBoard));
@@ -264,6 +354,9 @@ function App() {
     };
   }
 
+  const hasBoards = boardList.length > 0;
+  const isBoardReady = Boolean(activeBoard?.columns);
+
   return (
       <DndContext onDragEnd={handleDragEnd} onDragCancel={handleDragCancel} onDragStart={handleDragStart}>
         <div className="app-root">
@@ -288,7 +381,9 @@ function App() {
             <div className="nav-bar-center">
               <div className="board-selection-root">
                 <select value={activeBoardId ?? ""} className="board-selector"
+                        disabled={!hasBoards}
                         onChange={(e) => setActiveBoardId(Number(e.target.value))}>
+                  {!hasBoards && <option value="">No boards yet</option>}
                   {boardList.map((board) => (
                       <option key={board.id} value={board.id}>
                         {board.name}
@@ -296,6 +391,10 @@ function App() {
                   ))}
                 </select>
               </div>
+            </div>
+
+            <div className="nav-bar-right">
+              <button onClick={handleLogout}>Log Out</button>
             </div>
           </div>
 
@@ -308,8 +407,19 @@ function App() {
           <CardModal display={editingCard !== null} onClose={handleDoneEditCard}
           onSubmit={handleEditCard} initialCard={editingCard} />
 
-          <ColumnList className="columns" columnsData={activeBoard.columns}
-                      onEdit={handleStartEditCard} onDelete={handleDeleteCard} />
+          {isLoadingBoards && <p className="app-status-message">Loading your boards...</p>}
+
+          {!isLoadingBoards && !hasBoards && (
+              <div className="empty-state">
+                <h2>Your workspace is ready.</h2>
+                <p>Create your first board to start organizing tasks.</p>
+              </div>
+          )}
+
+          {!isLoadingBoards && hasBoards && isBoardReady && (
+              <ColumnList className="columns" columnsData={activeBoard.columns}
+                          onEdit={handleStartEditCard} onDelete={handleDeleteCard} />
+          )}
         </div>
 
         <DragOverlay>

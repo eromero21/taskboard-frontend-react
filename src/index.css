@@ -2,6 +2,11 @@ html, body {
   background-color: #1e1e1e;
 }
 
+#root {
+  width: 100%;
+  min-height: 100vh;
+}
+
 :root {
   font-family: system-ui, Avenir, Helvetica, Arial, sans-serif;
   line-height: 1.5;
