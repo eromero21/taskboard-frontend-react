@@ -7,7 +7,8 @@ import {
   deleteCard,
   getBoardById,
   getBoards,
-  createBoard
+  createBoard,
+  register
 } from "./api/taskboardAPI.js";
 import {clearAuthToken, getAuthToken} from "./api/fetcherAuth.js";
 import ColumnList from "./components/ColumnList.jsx";
@@ -77,6 +78,12 @@ function App() {
     setAuthNotice("");
   }
 
+  async function handleRegister(credentials) {
+    await register(credentials);
+    setAuthToken(getAuthToken());
+    setAuthNotice("");
+  }
+
   function handleLogout() {
     clearAuthToken();
     setAuthToken(null);
@@ -87,8 +94,6 @@ function App() {
   // Initial load: Fetching board list
   useEffect(() => {
     if (!authToken) {
-      resetBoardState();
-      setIsLoadingBoards(false);
       return;
     }
 
@@ -113,9 +118,15 @@ function App() {
       setActiveBoardId(initId);
     })()
         .catch((error) => {
-          if (!handleUnauthorizedSession(error)) {
+          if (!isUnauthorizedError(error)) {
             console.error(error);
+            return;
           }
+
+          clearAuthToken();
+          setAuthToken(null);
+          setAuthNotice("Your session expired. Please log in again.");
+          resetBoardState();
         })
         .finally(() => {
           setIsLoadingBoards(false);
@@ -140,14 +151,20 @@ function App() {
       const normBoard = normalizeColumns(board);
       setActiveBoard(normBoard);
     })().catch((error) => {
-      if (!handleUnauthorizedSession(error)) {
+      if (!isUnauthorizedError(error)) {
         console.error(error);
+        return;
       }
+
+      clearAuthToken();
+      setAuthToken(null);
+      setAuthNotice("Your session expired. Please log in again.");
+      resetBoardState();
     });
   }, [activeBoardId, authToken]);
 
   if (!authToken) {
-    return <LoginPage onLogin={handleLogin} notice={authNotice} />;
+    return <LoginPage onLogin={handleLogin} onRegister={handleRegister} notice={authNotice} />;
   }
 
   function handleShowCreateBoard() {
@@ -159,6 +176,10 @@ function App() {
   }
 
   function handleShowCreateCard() {
+    if (!activeBoard?.columns || activeBoardId == null) {
+      return;
+    }
+
     setShowCreateCard(true);
   }
 
@@ -193,15 +214,25 @@ function App() {
   }
 
   async function handleCreateCard(cardData) {
+    if (!activeBoard?.columns || activeBoardId == null) {
+      return;
+    }
+
     try {
       const newCard = await createCard(activeBoardId, cardData);
 
-      setActiveBoard(prevBoard => ({
-        ...prevBoard,
-        columns: prevBoard.columns.map(column =>
-            column.type === newCard.columnId ? { ...column, cards: [...column.cards, newCard] } : column,
-        )
-      }));
+      setActiveBoard(prevBoard => {
+        if (!prevBoard?.columns) {
+          return prevBoard;
+        }
+
+        return {
+          ...prevBoard,
+          columns: prevBoard.columns.map(column =>
+              column.type === newCard.columnId ? { ...column, cards: [...column.cards, newCard] } : column,
+          )
+        };
+      });
 
       setShowCreateCard(false);
     } catch (error) {
@@ -219,15 +250,21 @@ function App() {
     try {
       const editedCard = await editCard(activeBoardId, cardData.id, cardData);
 
-      setActiveBoard(prevBoard => ({
-        ...prevBoard,
-        columns: prevBoard.columns.map(column => ({
-          ...column,
-          cards: column.cards.map((card) =>
-            card.id === editedCard.id ? editedCard : card
-          ),
-        }))
-      }));
+      setActiveBoard(prevBoard => {
+        if (!prevBoard?.columns) {
+          return prevBoard;
+        }
+
+        return {
+          ...prevBoard,
+          columns: prevBoard.columns.map(column => ({
+            ...column,
+            cards: column.cards.map((card) =>
+              card.id === editedCard.id ? editedCard : card
+            ),
+          }))
+        };
+      });
 
       setEditingCard(null);
     } catch (error) {
@@ -245,13 +282,19 @@ function App() {
     try {
       await deleteCard(activeBoardId, cardId);
 
-      setActiveBoard(prevBoard => ({
-        ...prevBoard,
-        columns: prevBoard.columns.map(column => ({
-          ...column,
-          cards: column.cards.filter((card) => card.id !== cardId),
-        }))
-      }));
+      setActiveBoard(prevBoard => {
+        if (!prevBoard?.columns) {
+          return prevBoard;
+        }
+
+        return {
+          ...prevBoard,
+          columns: prevBoard.columns.map(column => ({
+            ...column,
+            cards: column.cards.filter((card) => card.id !== cardId),
+          }))
+        };
+      });
     } catch (error) {
       if (!handleUnauthorizedSession(error)) {
         console.error(error);
@@ -265,6 +308,10 @@ function App() {
   }
 
   function handleDragStart(event) {
+    if (!activeBoard?.columns) {
+      return;
+    }
+
     const {active} = event;
     const activeId = active.id;
 
@@ -281,6 +328,11 @@ function App() {
   }
 
   async function handleDragEnd(event) {
+    if (!activeBoard?.columns) {
+      setActiveCard(null);
+      return;
+    }
+
     const {active, over} = event;
     if (!over) {
       setActiveCard(null);
@@ -315,16 +367,26 @@ function App() {
   }
 
   function cardMoveLogic(board, activeId, overId) {
+    if (!board?.columns) {
+      setActiveCard(null);
+      return {board, card: null};
+    }
+
     const columns = [...board.columns];
 
     const fromColumn = searchColumnIdByCardId(columns, activeId);
     const toColumn = searchColumnIdByCardId(columns, overId) ||
         columns.find((column) => column.type === overId);
-    let currCard = fromColumn.cards.find((card) => card.id === activeId);
 
     if (!fromColumn || !toColumn) {
       setActiveCard(null);
-      return {board, data: null};
+      return {board, card: null};
+    }
+
+    const currCard = fromColumn.cards.find((card) => card.id === activeId);
+    if (!currCard) {
+      setActiveCard(null);
+      return {board, card: null};
     }
 
     const fromColIdx = columns.findIndex(column => column.type === fromColumn.type);
@@ -356,6 +418,7 @@ function App() {
 
   const hasBoards = boardList.length > 0;
   const isBoardReady = Boolean(activeBoard?.columns);
+  const canCreateCards = hasBoards && isBoardReady;
 
   return (
       <DndContext onDragEnd={handleDragEnd} onDragCancel={handleDragCancel} onDragStart={handleDragStart}>
@@ -370,7 +433,7 @@ function App() {
                 Create New Board
               </button>
 
-              <button onClick={handleShowCreateCard}>
+              <button onClick={handleShowCreateCard} disabled={!canCreateCards}>
                 <span className="button-plus-sign">
                     <FontAwesomeIcon icon={faPlus} />
                   </span>

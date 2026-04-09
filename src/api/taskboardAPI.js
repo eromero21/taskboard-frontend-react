@@ -58,8 +58,8 @@ export function deleteCard(boardId, cardId) {
     });
 }
 
-export async function login(credentials) {
-    const response = await apiFetch("/login", {
+async function authenticate(path, credentials) {
+    const response = await apiFetch(path, {
         method: "POST",
         headers: JSON_HEADERS,
         body: JSON.stringify(credentials),
@@ -73,4 +73,12 @@ export async function login(credentials) {
 
     setAuthToken(token);
     return response;
+}
+
+export function login(credentials) {
+    return authenticate("/auth/login", credentials);
+}
+
+export function register(credentials) {
+    return authenticate("/auth/register", credentials);
 }

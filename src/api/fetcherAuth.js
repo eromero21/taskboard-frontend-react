@@ -42,8 +42,32 @@ export async function apiFetch(path, options = {}, token) {
     });
 
     if (!response.ok) {
-        const text = await response.text().catch(() => "");
-        throw new Error(`${response.status} ${response.statusText}${text ? `\n${text}` : ""}`);
+        let errorDetails = "";
+
+        try {
+            const contentType = response.headers.get("content-type") || "";
+            if (contentType.includes("application/json")) {
+                const payload = await response.json();
+                const validationErrors = payload?.validationErrors && typeof payload.validationErrors === "object"
+                    ? Object.values(payload.validationErrors).filter(Boolean)
+                    : [];
+
+                errorDetails = [
+                    payload?.message,
+                    ...validationErrors,
+                ].filter(Boolean).join("\n");
+
+                if (!errorDetails) {
+                    errorDetails = JSON.stringify(payload);
+                }
+            } else {
+                errorDetails = await response.text();
+            }
+        } catch {
+            errorDetails = "";
+        }
+
+        throw new Error(`${response.status} ${response.statusText}${errorDetails ? `\n${errorDetails}` : ""}`);
     }
 
     if (response.status === 204) {
