@@ -1,6 +1,8 @@
 const URL = import.meta.env.VITE_API_BASE_URL;
 const TOKEN_STORAGE_KEY = "authToken";
 
+console.log("API URL:", import.meta.env.VITE_API_BASE_URL);
+
 function resolveToken(token) {
     if (token !== undefined) {
         return token;
