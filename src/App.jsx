@@ -13,13 +13,14 @@ import {
 import {clearAuthToken, getAuthToken} from "./api/fetcherAuth.js";
 import ColumnList from "./components/ColumnList.jsx";
 import {useEffect, useState} from "react";
-import {DndContext, DragOverlay} from "@dnd-kit/core";
+import {DndContext, DragOverlay, PointerSensor, useSensor, useSensors} from "@dnd-kit/core";
 import Card from "./components/Card.jsx";
 import {FontAwesomeIcon} from "@fortawesome/react-fontawesome";
 import {faPlus} from "@fortawesome/free-solid-svg-icons";
 import CardModal from "./components/CardModal.jsx";
 import BoardModal from "./components/BoardModal.jsx";
 import LoginPage from "./components/LoginPage.jsx";
+import CardDetailModal from "./components/CardDetailModal.jsx";
 
 const columnsOrder = ["BACKLOG", "TODO", "IN_PROGRESS", "COMPLETED"];
 
@@ -42,9 +43,18 @@ function App() {
   const [boardList, setBoardList] = useState([]);
   const [showCreateBoard, setShowCreateBoard] = useState(false);
 
-  const [activeCard, setActiveCard] = useState(null);
+  const [draggedCard, setDraggedCard] = useState(null);
   const [showCreateCard, setShowCreateCard] = useState(false);
-  const [editingCard, setEditingCard] = useState(null);
+  const [selectedCardId, setSelectedCardId] = useState(null);
+  const [detailModalStartInEdit, setDetailModalStartInEdit] = useState(false);
+
+  const sensors = useSensors(
+      useSensor(PointerSensor, {
+        activationConstraint: {
+          distance: 8,
+        },
+      }),
+  );
 
   function isUnauthorizedError(error) {
     return error instanceof Error && error.message.startsWith("401");
@@ -56,8 +66,9 @@ function App() {
     setBoardList([]);
     setShowCreateBoard(false);
     setShowCreateCard(false);
-    setEditingCard(null);
-    setActiveCard(null);
+    setSelectedCardId(null);
+    setDetailModalStartInEdit(false);
+    setDraggedCard(null);
   }
 
   function handleUnauthorizedSession(error) {
@@ -163,6 +174,11 @@ function App() {
     });
   }, [activeBoardId, authToken]);
 
+  useEffect(() => {
+    setSelectedCardId(null);
+    setDetailModalStartInEdit(false);
+  }, [activeBoardId]);
+
   if (!authToken) {
     return <LoginPage onLogin={handleLogin} onRegister={handleRegister} notice={authNotice} />;
   }
@@ -187,12 +203,19 @@ function App() {
     setShowCreateCard(false);
   }
 
-  function handleStartEditCard(card) {
-    setEditingCard(card);
+  function handleOpenCardDetail(card) {
+    setSelectedCardId(card.id);
+    setDetailModalStartInEdit(false);
   }
 
-  function handleDoneEditCard() {
-    setEditingCard(null);
+  function handleStartEditCard(card) {
+    setSelectedCardId(card.id);
+    setDetailModalStartInEdit(true);
+  }
+
+  function handleCloseCardDetail() {
+    setSelectedCardId(null);
+    setDetailModalStartInEdit(false);
   }
 
   async function handleCreateBoard(boardData) {
@@ -243,8 +266,8 @@ function App() {
   }
 
   async function handleEditCard(cardData) {
-    if (!editingCard) {
-      return;
+    if (!selectedCardId) {
+      return false;
     }
 
     try {
@@ -265,18 +288,18 @@ function App() {
           }))
         };
       });
-
-      setEditingCard(null);
+      return true;
     } catch (error) {
       if (!handleUnauthorizedSession(error)) {
         console.error(error);
       }
+      return false;
     }
   }
 
   async function handleDeleteCard(cardId) {
     if (!cardId) {
-      return;
+      return false;
     }
 
     try {
@@ -295,10 +318,16 @@ function App() {
           }))
         };
       });
+
+      if (selectedCardId === cardId) {
+        handleCloseCardDetail();
+      }
+      return true;
     } catch (error) {
       if (!handleUnauthorizedSession(error)) {
         console.error(error);
       }
+      return false;
     }
   }
 
@@ -320,22 +349,22 @@ function App() {
     if (!fromColumn) {return;}
 
     const card = fromColumn.cards.find((card) => card.id === activeId);
-    setActiveCard(card);
+    setDraggedCard(card);
   }
 
   function handleDragCancel() {
-    setActiveCard(null);
+    setDraggedCard(null);
   }
 
   async function handleDragEnd(event) {
     if (!activeBoard?.columns) {
-      setActiveCard(null);
+      setDraggedCard(null);
       return;
     }
 
     const {active, over} = event;
     if (!over) {
-      setActiveCard(null);
+      setDraggedCard(null);
       return;
     }
 
@@ -343,7 +372,7 @@ function App() {
     const overId = over.id;
 
     if (activeId === overId) {
-      setActiveCard(null);
+      setDraggedCard(null);
       return;
     }
 
@@ -368,7 +397,7 @@ function App() {
 
   function cardMoveLogic(board, activeId, overId) {
     if (!board?.columns) {
-      setActiveCard(null);
+      setDraggedCard(null);
       return {board, card: null};
     }
 
@@ -379,13 +408,13 @@ function App() {
         columns.find((column) => column.type === overId);
 
     if (!fromColumn || !toColumn) {
-      setActiveCard(null);
+      setDraggedCard(null);
       return {board, card: null};
     }
 
     const currCard = fromColumn.cards.find((card) => card.id === activeId);
     if (!currCard) {
-      setActiveCard(null);
+      setDraggedCard(null);
       return {board, card: null};
     }
 
@@ -408,8 +437,8 @@ function App() {
     newColumns[fromColIdx] = {...fromColumn, cards: fromCards};
     newColumns[toColIdx] = {...toColumn, cards: toCards};
 
-    setActiveCard(null);
-    const updatedCard = {...currCard, columnId: toColumn.type}
+    setDraggedCard(null);
+    const updatedCard = {...currCard, columnId: toColumn.type};
     return {
       board: {...board, columns: newColumns},
       card: updatedCard,
@@ -419,9 +448,23 @@ function App() {
   const hasBoards = boardList.length > 0;
   const isBoardReady = Boolean(activeBoard?.columns);
   const canCreateCards = hasBoards && isBoardReady;
+  const selectedCardDetails = activeBoard?.columns
+      ?.flatMap((column) =>
+          column.cards.map((card) => ({
+            ...card,
+            columnName: column.name,
+            columnType: column.type,
+          })),
+      )
+      .find((card) => card.id === selectedCardId) ?? null;
 
   return (
-      <DndContext onDragEnd={handleDragEnd} onDragCancel={handleDragCancel} onDragStart={handleDragStart}>
+      <DndContext
+          sensors={sensors}
+          onDragEnd={handleDragEnd}
+          onDragCancel={handleDragCancel}
+          onDragStart={handleDragStart}
+      >
         <div className="app-root">
 
           <div className="nav-bar-container">
@@ -467,8 +510,14 @@ function App() {
           <CardModal display={showCreateCard} onClose={handleCloseCreateCard}
                      onSubmit={handleCreateCard} />
 
-          <CardModal display={editingCard !== null} onClose={handleDoneEditCard}
-          onSubmit={handleEditCard} initialCard={editingCard} />
+          <CardDetailModal
+              display={selectedCardDetails !== null}
+              card={selectedCardDetails}
+              startInEdit={detailModalStartInEdit}
+              onClose={handleCloseCardDetail}
+              onSave={handleEditCard}
+              onDelete={handleDeleteCard}
+          />
 
           {isLoadingBoards && <p className="app-status-message">Loading your boards...</p>}
 
@@ -481,12 +530,14 @@ function App() {
 
           {!isLoadingBoards && hasBoards && isBoardReady && (
               <ColumnList className="columns" columnsData={activeBoard.columns}
-                          onEdit={handleStartEditCard} onDelete={handleDeleteCard} />
+                          onOpenDetails={handleOpenCardDetail}
+                          onEdit={handleStartEditCard}
+                          onDelete={handleDeleteCard} />
           )}
         </div>
 
         <DragOverlay>
-          {activeCard ? <Card cardInfo={activeCard} /> : null}
+          {draggedCard ? <Card cardInfo={draggedCard} /> : null}
         </DragOverlay>
       </DndContext>
   )

@@ -2,7 +2,7 @@ import Card from "./Card.jsx";
 import {SortableContext} from "@dnd-kit/sortable";
 import {useDroppable} from "@dnd-kit/core";
 
-function Column({columnData, onEdit, onDelete}) {
+function Column({columnData, onOpenDetails, onEdit, onDelete}) {
     const {setNodeRef} = useDroppable({
         id: columnData.type,
     })
@@ -15,7 +15,13 @@ function Column({columnData, onEdit, onDelete}) {
             <div className="column-cards">
                 <SortableContext id={columnData.type} items={columnData.cards.map(cardData => cardData.id)}>
                     {columnData.cards?.map((cardData) => (
-                    <Card key={cardData.id} cardInfo={cardData} onEdit={onEdit} onDelete={onDelete} />
+                    <Card
+                        key={cardData.id}
+                        cardInfo={cardData}
+                        onOpen={onOpenDetails}
+                        onEdit={onEdit}
+                        onDelete={onDelete}
+                    />
                 ))}
                 </SortableContext>
             </div>

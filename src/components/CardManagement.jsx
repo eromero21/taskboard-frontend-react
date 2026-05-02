@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from "react";
 import {FontAwesomeIcon} from "@fortawesome/react-fontawesome";
 import {faEdit, faTrashCan} from "@fortawesome/free-solid-svg-icons";
 
@@ -20,8 +20,8 @@ function CardManagement({onEdit, onDelete}) {
             }
         }
 
-        document.addEventListener('mousedown', onOutsideClick);
-        return () => { document.removeEventListener('mousedown', onOutsideClick); };
+        document.addEventListener("mousedown", onOutsideClick);
+        return () => { document.removeEventListener("mousedown", onOutsideClick); };
     }, [open]);
 
     return (
@@ -30,50 +30,48 @@ function CardManagement({onEdit, onDelete}) {
                 className="menu-btn"
                 aria-haspopup="menu"
                 aria-expanded={open}
-                onClick={(e) => {
-                    e.stopPropagation();
-                    setOpen((v) => !v);
+                onClick={(event) => {
+                    event.stopPropagation();
+                    setOpen((value) => !value);
                 }}
-                onPointerDown={(e) => {
-                    e.stopPropagation();
+                onPointerDown={(event) => {
+                    event.stopPropagation();
                 }}
-                >
-                ⋯
+            >
+                ...
             </button>
 
             {open && (
                 <div
                     className="menu-popup"
                     role="menu"
-                    onClick={(e) => {e.stopPropagation();}}
+                    onClick={(event) => {event.stopPropagation();}}
                 >
                     <button
                         className="menu-item"
                         role="menuitem"
-                        onPointerDown={(e) => {
-                            e.stopPropagation();
+                        onPointerDown={(event) => {
+                            event.stopPropagation();
                         }}
                         onClick={() => {
                             setOpen(false);
                             onEdit();
-                            console.log("Edit action occurring..");
                         }}
-                        >
+                    >
                         Edit Card
                         <FontAwesomeIcon icon={faEdit} />
                     </button>
                     <button
                         className="menu-item-del"
                         role="menuitem"
-                        onPointerDown={(e) => {
-                            e.stopPropagation();
+                        onPointerDown={(event) => {
+                            event.stopPropagation();
                         }}
                         onClick={() => {
                             setOpen(false);
                             onDelete();
-                            console.log("Delete action occurring..");
                         }}
-                        >
+                    >
                         Delete Card
                         <FontAwesomeIcon icon={faTrashCan} />
                     </button>

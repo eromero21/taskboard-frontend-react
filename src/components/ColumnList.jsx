@@ -1,10 +1,16 @@
 import Column from "./Column.jsx";
 
-function ColumnList({columnsData, onEdit, onDelete}) {
+function ColumnList({columnsData, onOpenDetails, onEdit, onDelete}) {
     return (
       <div className="column-list">
           {columnsData.map((column) => (
-              <Column key={column.type} columnData={column} onEdit={onEdit} onDelete={onDelete} />
+              <Column
+                  key={column.type}
+                  columnData={column}
+                  onOpenDetails={onOpenDetails}
+                  onEdit={onEdit}
+                  onDelete={onDelete}
+              />
           ))}
       </div>
     );
