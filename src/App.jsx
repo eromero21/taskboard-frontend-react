@@ -56,8 +56,22 @@ function App() {
       }),
   );
 
+  function getErrorStatus(error) {
+    if (!(error instanceof Error)) {
+      return null;
+    }
+
+    if (typeof error.status === "number") {
+      return error.status;
+    }
+
+    const match = error.message.match(/^(\d{3})\b/);
+    return match ? Number(match[1]) : null;
+  }
+
   function isUnauthorizedError(error) {
-    return error instanceof Error && error.message.startsWith("401");
+    const status = getErrorStatus(error);
+    return status === 401 || status === 403;
   }
 
   function resetBoardState() {
@@ -129,15 +143,9 @@ function App() {
       setActiveBoardId(initId);
     })()
         .catch((error) => {
-          if (!isUnauthorizedError(error)) {
+          if (!handleUnauthorizedSession(error)) {
             console.error(error);
-            return;
           }
-
-          clearAuthToken();
-          setAuthToken(null);
-          setAuthNotice("Your session expired. Please log in again.");
-          resetBoardState();
         })
         .finally(() => {
           setIsLoadingBoards(false);
@@ -162,15 +170,9 @@ function App() {
       const normBoard = normalizeColumns(board);
       setActiveBoard(normBoard);
     })().catch((error) => {
-      if (!isUnauthorizedError(error)) {
+      if (!handleUnauthorizedSession(error)) {
         console.error(error);
-        return;
       }
-
-      clearAuthToken();
-      setAuthToken(null);
-      setAuthNotice("Your session expired. Please log in again.");
-      resetBoardState();
     });
   }, [activeBoardId, authToken]);
 

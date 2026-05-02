@@ -1,4 +1,4 @@
-const URL = "http://localhost:8080";
+const URL = import.meta.env.VITE_API_BASE_URL;
 const TOKEN_STORAGE_KEY = "authToken";
 
 function resolveToken(token) {
@@ -67,7 +67,11 @@ export async function apiFetch(path, options = {}, token) {
             errorDetails = "";
         }
 
-        throw new Error(`${response.status} ${response.statusText}${errorDetails ? `\n${errorDetails}` : ""}`);
+        const error = new Error(
+            `${response.status} ${response.statusText}${errorDetails ? `\n${errorDetails}` : ""}`,
+        );
+        error.status = response.status;
+        throw error;
     }
 
     if (response.status === 204) {
