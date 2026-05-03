@@ -153,6 +153,36 @@
   text-align: center;
 }
 
+.board-selection-root {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.board-selection-root .board-selector,
+.delete-board-button {
+  margin: 0;
+}
+
+.delete-board-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  border-color: rgba(255, 143, 143, 0.55);
+  color: #ffb0b0;
+}
+
+.delete-board-button:hover {
+  border-color: #ff8f8f;
+  color: #ffd0d0;
+}
+
+.delete-board-button:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
 .create-card-backdrop, .create-board-backdrop {
   position: fixed;
   inset: 0;
@@ -531,6 +561,12 @@
 
   .board-selector {
     min-width: 60vw;
+  }
+
+  .board-selection-root {
+    width: 100%;
+    flex-wrap: wrap;
+    justify-content: center;
   }
 
   .detail-card-metadata {

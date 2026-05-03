@@ -1,6 +1,7 @@
 import './App.css';
 import {
   createCard,
+  deleteBoard,
   login,
   moveCard,
   editCard,
@@ -16,7 +17,7 @@ import {useEffect, useState} from "react";
 import {DndContext, DragOverlay, PointerSensor, useSensor, useSensors} from "@dnd-kit/core";
 import Card from "./components/Card.jsx";
 import {FontAwesomeIcon} from "@fortawesome/react-fontawesome";
-import {faPlus} from "@fortawesome/free-solid-svg-icons";
+import {faPlus, faTrashCan} from "@fortawesome/free-solid-svg-icons";
 import CardModal from "./components/CardModal.jsx";
 import BoardModal from "./components/BoardModal.jsx";
 import LoginPage from "./components/LoginPage.jsx";
@@ -71,7 +72,7 @@ function App() {
 
   function isUnauthorizedError(error) {
     const status = getErrorStatus(error);
-    return status === 401 || status === 403;
+    return status === 401;
   }
 
   function resetBoardState() {
@@ -83,6 +84,7 @@ function App() {
     setSelectedCardId(null);
     setDetailModalStartInEdit(false);
     setDraggedCard(null);
+    localStorage.removeItem("activeBoardId");
   }
 
   function handleUnauthorizedSession(error) {
@@ -130,6 +132,7 @@ function App() {
       if (!boardsSummary || boardsSummary.length === 0) {
         setActiveBoardId(null);
         setActiveBoard(null);
+        localStorage.removeItem("activeBoardId");
         return;
       }
 
@@ -235,6 +238,52 @@ function App() {
       if (!handleUnauthorizedSession(error)) {
         console.error(error);
       }
+    }
+  }
+
+  async function handleDeleteBoard() {
+    if (activeBoardId == null) {
+      return false;
+    }
+
+    const boardIdToDelete = Number(activeBoardId);
+    const boardIndex = boardList.findIndex((board) => board.id === boardIdToDelete);
+    const boardName = boardList.find((board) => board.id === boardIdToDelete)?.name ?? "this board";
+    const confirmed = window.confirm(
+        `Delete "${boardName}"? This will permanently remove the board and its cards.`,
+    );
+
+    if (!confirmed) {
+      return false;
+    }
+
+    try {
+      await deleteBoard(boardIdToDelete);
+
+      const remainingBoards = boardList.filter((board) => board.id !== boardIdToDelete);
+      setBoardList(remainingBoards);
+      setSelectedCardId(null);
+      setDetailModalStartInEdit(false);
+      setShowCreateCard(false);
+      setActiveBoard(null);
+
+      if (remainingBoards.length === 0) {
+        setActiveBoardId(null);
+        localStorage.removeItem("activeBoardId");
+        return true;
+      }
+
+      const nextBoard =
+          remainingBoards[Math.min(boardIndex, remainingBoards.length - 1)] ??
+          remainingBoards[0];
+
+      setActiveBoardId(nextBoard.id);
+      return true;
+    } catch (error) {
+      if (!handleUnauthorizedSession(error)) {
+        console.error(error);
+      }
+      return false;
     }
   }
 
@@ -498,6 +547,15 @@ function App() {
                       </option>
                   ))}
                 </select>
+                <button
+                    className="delete-board-button"
+                    type="button"
+                    disabled={!hasBoards}
+                    onClick={handleDeleteBoard}
+                >
+                  <FontAwesomeIcon icon={faTrashCan} />
+                  Delete Board
+                </button>
               </div>
             </div>
 

@@ -20,6 +20,27 @@ export function createBoard(boardName) {
     });
 }
 
+export async function deleteBoard(boardId) {
+    try {
+        return await apiFetch(`/boards/${boardId}/delete`, {
+            method: "DELETE",
+        });
+    } catch (error) {
+        const status = error instanceof Error && typeof error.status === "number"
+            ? error.status
+            : null;
+
+        // Support either the existing custom delete route or a REST-style DELETE /boards/{id}.
+        if (status !== 403 && status !== 404 && status !== 405) {
+            throw error;
+        }
+
+        return apiFetch(`/boards/${boardId}`, {
+            method: "DELETE",
+        });
+    }
+}
+
 export function createCard(boardId, cardInfo) {
     return apiFetch(`/boards/${boardId}/cards`, {
         method: "POST",
