@@ -1,31 +1,50 @@
 const URL = import.meta.env.VITE_API_BASE_URL;
-const TOKEN_STORAGE_KEY = "authToken";
+const TOKEN_STORAGE_KEY = "taskboard.authToken";
+const LEGACY_TOKEN_STORAGE_KEY = "authToken";
 
 console.log("API URL:", import.meta.env.VITE_API_BASE_URL);
 
-function resolveToken(token) {
-    if (token !== undefined) {
-        return token;
+function normalizeToken(token) {
+    if (typeof token !== "string") {
+        return null;
     }
 
-    return localStorage.getItem(TOKEN_STORAGE_KEY);
+    const normalizedToken = token.trim();
+    if (!normalizedToken || normalizedToken === "null" || normalizedToken === "undefined") {
+        return null;
+    }
+
+    return normalizedToken;
+}
+
+function resolveToken(token) {
+    if (token !== undefined) {
+        return normalizeToken(token);
+    }
+
+    return getAuthToken();
 }
 
 export function getAuthToken() {
-    return localStorage.getItem(TOKEN_STORAGE_KEY);
+    return normalizeToken(localStorage.getItem(TOKEN_STORAGE_KEY));
 }
 
 export function setAuthToken(token) {
-    if (!token) {
+    const normalizedToken = normalizeToken(token);
+
+    if (!normalizedToken) {
         localStorage.removeItem(TOKEN_STORAGE_KEY);
+        localStorage.removeItem(LEGACY_TOKEN_STORAGE_KEY);
         return;
     }
 
-    localStorage.setItem(TOKEN_STORAGE_KEY, token);
+    localStorage.setItem(TOKEN_STORAGE_KEY, normalizedToken);
+    localStorage.removeItem(LEGACY_TOKEN_STORAGE_KEY);
 }
 
 export function clearAuthToken() {
     localStorage.removeItem(TOKEN_STORAGE_KEY);
+    localStorage.removeItem(LEGACY_TOKEN_STORAGE_KEY);
 }
 
 export function authHeaders(token, extra = {}) {

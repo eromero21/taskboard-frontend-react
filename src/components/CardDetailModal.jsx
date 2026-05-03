@@ -51,9 +51,9 @@ function CardDetailModal({
     onDelete,
 }) {
     const modalRef = useRef(null);
-    const [isEditing, setIsEditing] = useState(startInEdit);
-    const [title, setTitle] = useState("");
-    const [description, setDescription] = useState("");
+    const [isEditing, setIsEditing] = useState(() => startInEdit);
+    const [title, setTitle] = useState(() => card?.title ?? "");
+    const [description, setDescription] = useState(() => card?.description ?? "");
 
     useEffect(() => {
         if (!display || !card) {
@@ -61,10 +61,7 @@ function CardDetailModal({
         }
 
         modalRef.current?.focus();
-        setIsEditing(startInEdit);
-        setTitle(card.title ?? "");
-        setDescription(card.description ?? "");
-    }, [card, display, startInEdit]);
+    }, [card, display]);
 
     if (!display || !card) {
         return null;
