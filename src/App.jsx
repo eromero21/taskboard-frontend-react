@@ -2,6 +2,7 @@ import './App.css';
 import {
   createCard,
   deleteBoard,
+  generateTaskSuggestions,
   login,
   moveCard,
   editCard,
@@ -22,6 +23,7 @@ import CardModal from "./components/CardModal.jsx";
 import BoardModal from "./components/BoardModal.jsx";
 import LoginPage from "./components/LoginPage.jsx";
 import CardDetailModal from "./components/CardDetailModal.jsx";
+import AiGenerateModal from "./components/AiGenerateModal.jsx";
 
 const columnsOrder = ["BACKLOG", "TODO", "IN_PROGRESS", "COMPLETED"];
 
@@ -48,9 +50,47 @@ function getErrorStatus(error) {
   return match ? Number(match[1]) : null;
 }
 
-function isUnauthorizedError(error) {
+function isUnauthorizedError(error, includeForbidden = true) {
   const status = getErrorStatus(error);
-  return status === 401 || status === 403;
+  return status === 401 || (includeForbidden && status === 403);
+}
+
+function resolveCardColumnType(card, columns) {
+  const candidateColumnType =
+      card?.columnId ??
+      card?.columnType ??
+      card?.column?.type ??
+      null;
+
+  if (candidateColumnType && columns.some((column) => column.type === candidateColumnType)) {
+    return candidateColumnType;
+  }
+
+  return columns[0]?.type ?? null;
+}
+
+function appendCardsToBoard(board, newCards) {
+  if (!board?.columns || newCards.length === 0) {
+    return board;
+  }
+
+  return {
+    ...board,
+    columns: board.columns.map((column) => {
+      const cardsForColumn = newCards.filter(
+          (card) => resolveCardColumnType(card, board.columns) === column.type,
+      );
+
+      if (cardsForColumn.length === 0) {
+        return column;
+      }
+
+      return {
+        ...column,
+        cards: [...column.cards, ...cardsForColumn],
+      };
+    }),
+  };
 }
 
 function App() {
@@ -62,6 +102,7 @@ function App() {
   const [activeBoard, setActiveBoard] = useState(null);
   const [boardList, setBoardList] = useState([]);
   const [showCreateBoard, setShowCreateBoard] = useState(false);
+  const [showAiGenerate, setShowAiGenerate] = useState(false);
 
   const [draggedCard, setDraggedCard] = useState(null);
   const [showCreateCard, setShowCreateCard] = useState(false);
@@ -83,6 +124,7 @@ function App() {
     setActiveBoard(null);
     setBoardList([]);
     setShowCreateBoard(false);
+    setShowAiGenerate(false);
     setShowCreateCard(false);
     setSelectedCardId(null);
     setDetailModalStartInEdit(false);
@@ -90,8 +132,10 @@ function App() {
     localStorage.removeItem("activeBoardId");
   }, []);
 
-  const handleUnauthorizedSession = useCallback((error) => {
-    if (!isUnauthorizedError(error)) {
+  const handleUnauthorizedSession = useCallback((error, options = {}) => {
+    const {includeForbidden = true} = options;
+
+    if (!isUnauthorizedError(error, includeForbidden)) {
       return false;
     }
 
@@ -240,8 +284,20 @@ function App() {
     setShowCreateCard(true);
   }
 
+  function handleShowAiGenerate() {
+    if (!activeBoard?.columns || activeBoardId == null) {
+      return;
+    }
+
+    setShowAiGenerate(true);
+  }
+
   function handleCloseCreateCard() {
     setShowCreateCard(false);
+  }
+
+  function handleCloseAiGenerate() {
+    setShowAiGenerate(false);
   }
 
   function handleOpenCardDetail(card) {
@@ -300,6 +356,7 @@ function App() {
       setBoardList(remainingBoards);
       setSelectedCardId(null);
       setDetailModalStartInEdit(false);
+      setShowAiGenerate(false);
       setShowCreateCard(false);
       setActiveBoard(null);
 
@@ -331,24 +388,61 @@ function App() {
     try {
       const newCard = await createCard(activeBoardId, cardData);
 
-      setActiveBoard(prevBoard => {
-        if (!prevBoard?.columns) {
-          return prevBoard;
-        }
-
-        return {
-          ...prevBoard,
-          columns: prevBoard.columns.map(column =>
-              column.type === newCard.columnId ? { ...column, cards: [...column.cards, newCard] } : column,
-          )
-        };
-      });
+      setActiveBoard((prevBoard) => appendCardsToBoard(prevBoard, [newCard]));
 
       setShowCreateCard(false);
     } catch (error) {
       if (!handleUnauthorizedSession(error)) {
         console.error(error);
       }
+    }
+  }
+
+  async function handleGenerateAiTasks(projectIdea) {
+    try {
+      return await generateTaskSuggestions(projectIdea);
+    } catch (error) {
+      if (handleUnauthorizedSession(error, {includeForbidden: false})) {
+        throw new Error("Your session expired. Please log in again.");
+      }
+
+      throw error;
+    }
+  }
+
+  async function handleApplyGeneratedTasks(tasks) {
+    if (!activeBoard?.columns || activeBoardId == null || tasks.length === 0) {
+      return false;
+    }
+
+    const createdCards = [];
+
+    try {
+      for (const task of tasks) {
+        const createdCard = await createCard(activeBoardId, task);
+        createdCards.push(createdCard);
+      }
+
+      setActiveBoard((prevBoard) => appendCardsToBoard(prevBoard, createdCards));
+      setShowAiGenerate(false);
+      return true;
+    } catch (error) {
+      if (handleUnauthorizedSession(error)) {
+        return false;
+      }
+
+      console.error(error);
+
+      try {
+        const refreshedBoard = await getBoardById(activeBoardId);
+        setActiveBoard(normalizeColumns(refreshedBoard));
+      } catch (refreshError) {
+        if (!handleUnauthorizedSession(refreshError)) {
+          console.error(refreshError);
+        }
+      }
+
+      throw error;
     }
   }
 
@@ -575,6 +669,10 @@ function App() {
                   </span>
                 Create New Card
               </button>
+
+              <button onClick={handleShowAiGenerate} disabled={!canCreateCards}>
+                Ai Generate
+              </button>
             </div>
 
             <div className="nav-bar-center">
@@ -611,6 +709,13 @@ function App() {
 
           <CardModal display={showCreateCard} onClose={handleCloseCreateCard}
                      onSubmit={handleCreateCard} />
+
+          <AiGenerateModal
+              display={showAiGenerate}
+              onClose={handleCloseAiGenerate}
+              onGenerate={handleGenerateAiTasks}
+              onApply={handleApplyGeneratedTasks}
+          />
 
           {selectedCardDetails !== null && (
               <CardDetailModal

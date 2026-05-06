@@ -2,6 +2,40 @@ import {apiFetch, setAuthToken} from "./fetcherAuth.js";
 
 const JSON_HEADERS = {"Content-Type": "application/json"};
 
+function normalizeGeneratedTask(task, index) {
+    if (!task || typeof task !== "object") {
+        return null;
+    }
+
+    const title = String(
+        task.title ??
+        "",
+    ).trim();
+
+    if (!title) {
+        return null;
+    }
+
+    return {
+        id: String(task.id ?? `generated-${index}`),
+        title,
+        description: String(task.description ?? task.details ?? task.reasoning ?? "").trim(),
+    };
+}
+
+function normalizeGeneratedTasks(payload) {
+    const candidates = payload?.tasks ?? [];
+
+    if (!Array.isArray(candidates)) {
+        return [];
+    }
+
+    return candidates
+        .map(normalizeGeneratedTask)
+        .filter(Boolean)
+        .slice(0, 5);
+}
+
 export function getBoards() {
     return apiFetch("/boards");
 }
@@ -50,6 +84,23 @@ export function createCard(boardId, cardInfo) {
             description: cardInfo.description,
         }),
     });
+}
+
+export async function generateTaskSuggestions(projectIdea) {
+    const response = await apiFetch("/ai/generate-tasks", {
+        method: "POST",
+        headers: JSON_HEADERS,
+        body: JSON.stringify({
+            projectIdea,
+        }),
+    });
+
+    const tasks = normalizeGeneratedTasks(response);
+    if (tasks.length === 0) {
+        throw new Error("The AI task generation endpoint returned no tasks.");
+    }
+
+    return tasks;
 }
 
 export function editCard(boardId, cardId, cardInfo) {
