@@ -3,16 +3,13 @@ import {
   createCard,
   deleteBoard,
   generateTaskSuggestions,
-  login,
   moveCard,
   editCard,
   deleteCard,
   getBoardById,
   getBoards,
   createBoard,
-  register
 } from "./api/taskboardAPI.js";
-import {clearAuthToken, getAuthToken} from "./api/fetcherAuth.js";
 import ColumnList from "./components/ColumnList.jsx";
 import {useCallback, useEffect, useState} from "react";
 import {DndContext, DragOverlay, PointerSensor, useSensor, useSensors} from "@dnd-kit/core";
@@ -24,6 +21,7 @@ import BoardModal from "./components/BoardModal.jsx";
 import LoginPage from "./components/LoginPage.jsx";
 import CardDetailModal from "./components/CardDetailModal.jsx";
 import AiGenerateModal from "./components/AiGenerateModal.jsx";
+import {useAuth} from "./hooks/useAuth.js"
 
 const columnsOrder = ["BACKLOG", "TODO", "IN_PROGRESS", "COMPLETED"];
 
@@ -35,24 +33,6 @@ function normalizeColumns(board) {
   }
 
   return board;
-}
-
-function getErrorStatus(error) {
-  if (!(error instanceof Error)) {
-    return null;
-  }
-
-  if (typeof error.status === "number") {
-    return error.status;
-  }
-
-  const match = error.message.match(/^(\d{3})\b/);
-  return match ? Number(match[1]) : null;
-}
-
-function isUnauthorizedError(error, includeForbidden = true) {
-  const status = getErrorStatus(error);
-  return status === 401 || (includeForbidden && status === 403);
 }
 
 function resolveCardColumnType(card, columns) {
@@ -94,10 +74,8 @@ function appendCardsToBoard(board, newCards) {
 }
 
 function App() {
-  const [authToken, setAuthToken] = useState(() => getAuthToken());
-  const [authNotice, setAuthNotice] = useState("");
   const [isLoadingBoards, setIsLoadingBoards] = useState(false);
-  const [hasLoadedBoards, setHasLoadedBoards] = useState(() => !getAuthToken());
+  const [hasLoadedBoards, setHasLoadedBoards] = useState(false);
   const [activeBoardId, setActiveBoardId] = useState(null);
   const [activeBoard, setActiveBoard] = useState(null);
   const [boardList, setBoardList] = useState([]);
@@ -132,42 +110,16 @@ function App() {
     localStorage.removeItem("activeBoardId");
   }, []);
 
-  const handleUnauthorizedSession = useCallback((error, options = {}) => {
-    const {includeForbidden = true} = options;
-
-    if (!isUnauthorizedError(error, includeForbidden)) {
-      return false;
-    }
-
-    clearAuthToken();
-    setAuthToken(null);
-    setAuthNotice("Your session expired. Please log in again.");
-    resetBoardState();
-    return true;
-  }, [resetBoardState]);
-
-  async function handleLogin(credentials) {
-    await login(credentials);
-    setIsLoadingBoards(true);
-    setHasLoadedBoards(false);
-    setAuthToken(getAuthToken());
-    setAuthNotice("");
-  }
-
-  async function handleRegister(credentials) {
-    await register(credentials);
-    setIsLoadingBoards(true);
-    setHasLoadedBoards(false);
-    setAuthToken(getAuthToken());
-    setAuthNotice("");
-  }
-
-  function handleLogout() {
-    clearAuthToken();
-    setAuthToken(null);
-    setAuthNotice("");
-    resetBoardState();
-  }
+  const {
+    authToken,
+    authNotice,
+      handleUnauthorizedSession,
+    login: handleLogin,
+    register: handleRegister,
+    logout: handleLogout,
+  } = useAuth({
+    onLogoutCleanup: resetBoardState
+  });
 
   const handleActiveBoardChange = useCallback((nextBoardId) => {
     setActiveBoardId(nextBoardId);
