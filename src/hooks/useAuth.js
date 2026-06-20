@@ -20,7 +20,7 @@ function isUnauthorizedError(error, includeForbidden = true) {
     return status === 401 || (includeForbidden && status === 403);
 }
 
-export function useAuth( {onLogoutCleanup}) {
+export function useAuth() {
     const [authToken, setAuthToken] = useState(() => getAuthToken());
     const [authNotice, setAuthNotice] = useState("");
 
@@ -35,7 +35,6 @@ export function useAuth( {onLogoutCleanup}) {
         clearAuthToken();
         setAuthToken(null);
         setAuthNotice("");
-        onLogoutCleanup?.();
     }
 
     async function handleRegister(credentials) {
@@ -55,7 +54,6 @@ export function useAuth( {onLogoutCleanup}) {
         clearAuthToken();
         setAuthToken(null);
         setAuthNotice("Your session expired. Please log in again.");
-        onLogoutCleanup?.();
         return true;
     });
 

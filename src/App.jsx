@@ -1,17 +1,14 @@
 import './App.css';
 import {
   createCard,
-  deleteBoard,
   generateTaskSuggestions,
   moveCard,
   editCard,
   deleteCard,
   getBoardById,
-  getBoards,
-  createBoard,
 } from "./api/taskboardAPI.js";
 import ColumnList from "./components/ColumnList.jsx";
-import {useCallback, useEffect, useState} from "react";
+import {useState} from "react";
 import {DndContext, DragOverlay, PointerSensor, useSensor, useSensors} from "@dnd-kit/core";
 import Card from "./components/Card.jsx";
 import {FontAwesomeIcon} from "@fortawesome/react-fontawesome";
@@ -22,63 +19,9 @@ import LoginPage from "./components/LoginPage.jsx";
 import CardDetailModal from "./components/CardDetailModal.jsx";
 import AiGenerateModal from "./components/AiGenerateModal.jsx";
 import {useAuth} from "./hooks/useAuth.js"
-
-const columnsOrder = ["BACKLOG", "TODO", "IN_PROGRESS", "COMPLETED"];
-
-function normalizeColumns(board) {
-  if (Array.isArray(board.columns)) {
-    const normColumns = [...board.columns].sort(
-        (a, b) => columnsOrder.indexOf(a.type) - columnsOrder.indexOf(b.type));
-    return { ...board, columns: normColumns };
-  }
-
-  return board;
-}
-
-function resolveCardColumnType(card, columns) {
-  const candidateColumnType =
-      card?.columnId ??
-      card?.columnType ??
-      card?.column?.type ??
-      null;
-
-  if (candidateColumnType && columns.some((column) => column.type === candidateColumnType)) {
-    return candidateColumnType;
-  }
-
-  return columns[0]?.type ?? null;
-}
-
-function appendCardsToBoard(board, newCards) {
-  if (!board?.columns || newCards.length === 0) {
-    return board;
-  }
-
-  return {
-    ...board,
-    columns: board.columns.map((column) => {
-      const cardsForColumn = newCards.filter(
-          (card) => resolveCardColumnType(card, board.columns) === column.type,
-      );
-
-      if (cardsForColumn.length === 0) {
-        return column;
-      }
-
-      return {
-        ...column,
-        cards: [...column.cards, ...cardsForColumn],
-      };
-    }),
-  };
-}
+import {useBoard} from "./hooks/useBoard.js"
 
 function App() {
-  const [isLoadingBoards, setIsLoadingBoards] = useState(false);
-  const [hasLoadedBoards, setHasLoadedBoards] = useState(false);
-  const [activeBoardId, setActiveBoardId] = useState(null);
-  const [activeBoard, setActiveBoard] = useState(null);
-  const [boardList, setBoardList] = useState([]);
   const [showCreateBoard, setShowCreateBoard] = useState(false);
   const [showAiGenerate, setShowAiGenerate] = useState(false);
 
@@ -95,21 +38,6 @@ function App() {
       }),
   );
 
-  const resetBoardState = useCallback(() => {
-    setIsLoadingBoards(false);
-    setHasLoadedBoards(false);
-    setActiveBoardId(null);
-    setActiveBoard(null);
-    setBoardList([]);
-    setShowCreateBoard(false);
-    setShowAiGenerate(false);
-    setShowCreateCard(false);
-    setSelectedCardId(null);
-    setDetailModalStartInEdit(false);
-    setDraggedCard(null);
-    localStorage.removeItem("activeBoardId");
-  }, []);
-
   const {
     authToken,
     authNotice,
@@ -117,107 +45,44 @@ function App() {
     login: handleLogin,
     register: handleRegister,
     logout: handleLogout,
-  } = useAuth({
-    onLogoutCleanup: resetBoardState
-  });
+  } = useAuth();
 
-  const handleActiveBoardChange = useCallback((nextBoardId) => {
-    setActiveBoardId(nextBoardId);
-    setSelectedCardId(null);
-    setDetailModalStartInEdit(false);
-  }, []);
-
-  // Initial load: Fetching board list
-  useEffect(() => {
-    if (!authToken) {
-      return;
-    }
-
-    let isCurrent = true;
-
-    (async () => {
-      setIsLoadingBoards(true);
-      setHasLoadedBoards(false);
-
-      const boardsSummary = await getBoards();
-      if (!isCurrent) {
-        return;
-      }
-
-      setBoardList(boardsSummary);
-
-      if (!boardsSummary || boardsSummary.length === 0) {
-        setActiveBoardId(null);
-        setActiveBoard(null);
-        localStorage.removeItem("activeBoardId");
-        return;
-      }
-
-      const prevData = localStorage.getItem("activeBoardId");
-      const prevBoardId = prevData ? Number(prevData) : null;
-
-      const initId =
-          prevBoardId && boardsSummary.some((b) => b.id === prevBoardId) ? prevBoardId :
-          boardsSummary[0].id;
-
-      setActiveBoard(null);
-      handleActiveBoardChange(initId);
-    })()
-        .catch((error) => {
-          if (isCurrent && !handleUnauthorizedSession(error)) {
-            console.error(error);
-          }
-        })
-        .finally(() => {
-          if (!isCurrent) {
-            return;
-          }
-
-          setIsLoadingBoards(false);
-          setHasLoadedBoards(true);
-        });
-
-    return () => {
-      isCurrent = false;
-    };
-  }, [authToken, handleActiveBoardChange, handleUnauthorizedSession]);
-
-  // If active board changes, grab the board accordingly.
-  useEffect(() => {
-    if (!authToken || activeBoardId == null) {
-      return;
-    }
-
-    const id = Number(activeBoardId);
-    if (Number.isNaN(id)) {
-      return;
-    }
-
-    let isCurrent = true;
-
-    localStorage.setItem("activeBoardId", String(id));
-
-    (async () => {
-      const board = await getBoardById(id);
-      if (!isCurrent) {
-        return;
-      }
-
-      const normBoard = normalizeColumns(board);
-      setActiveBoard(normBoard);
-    })().catch((error) => {
-      if (isCurrent && !handleUnauthorizedSession(error)) {
-        console.error(error);
-      }
-    });
-
-    return () => {
-      isCurrent = false;
-    };
-  }, [activeBoardId, authToken, handleUnauthorizedSession]);
+  const {
+    hasBoards,
+    activeBoardId,
+    activeBoard,
+    boardList,
+    isBoardReady,
+    isBootstrappingWorkspace,
+    canCreateCards,
+    setActiveBoard,
+    resetBoardState,
+    handleActiveBoardChange,
+    handleCreateBoard,
+    handleDeleteBoard,
+    normalizeColumns,
+    appendCardsToBoard,
+  } = useBoard({
+    authToken, handleUnauthorizedSession
+  })
 
   if (!authToken) {
     return <LoginPage onLogin={handleLogin} onRegister={handleRegister} notice={authNotice} />;
+  }
+
+  function resetAppState() {
+    setShowCreateBoard(false);
+    setShowAiGenerate(false);
+    setShowCreateCard(false);
+    setSelectedCardId(null);
+    setDetailModalStartInEdit(false);
+    setDraggedCard(null);
+  }
+
+  function handleAppLogout() {
+    handleLogout();
+    resetAppState();
+    resetBoardState();
   }
 
   function handleShowCreateBoard() {
@@ -267,68 +132,16 @@ function App() {
     setDetailModalStartInEdit(false);
   }
 
-  async function handleCreateBoard(boardData) {
-    try {
-      const newBoard = await createBoard(boardData);
-
-      // UseEffect will assign normalized board
-      handleActiveBoardChange(newBoard.id);
-
-      const freshBoards = await getBoards();
-      setBoardList(freshBoards);
-
-      setShowCreateBoard(false);
-    } catch (error) {
-      if (!handleUnauthorizedSession(error)) {
-        console.error(error);
-      }
-    }
+  async function handleCreateBoardandClose(boardData) {
+    await handleCreateBoard(boardData);
+    setShowCreateBoard(false);
   }
 
-  async function handleDeleteBoard() {
-    if (activeBoardId == null) {
-      return false;
-    }
+  async function handleDeleteBoardandReset() {
+    const confirmDelete = await handleDeleteBoard();
 
-    const boardIdToDelete = Number(activeBoardId);
-    const boardIndex = boardList.findIndex((board) => board.id === boardIdToDelete);
-    const boardName = boardList.find((board) => board.id === boardIdToDelete)?.name ?? "this board";
-    const confirmed = window.confirm(
-        `Delete "${boardName}"? This will permanently remove the board and its cards.`,
-    );
-
-    if (!confirmed) {
-      return false;
-    }
-
-    try {
-      await deleteBoard(boardIdToDelete);
-
-      const remainingBoards = boardList.filter((board) => board.id !== boardIdToDelete);
-      setBoardList(remainingBoards);
-      setSelectedCardId(null);
-      setDetailModalStartInEdit(false);
-      setShowAiGenerate(false);
-      setShowCreateCard(false);
-      setActiveBoard(null);
-
-      if (remainingBoards.length === 0) {
-        handleActiveBoardChange(null);
-        localStorage.removeItem("activeBoardId");
-        return true;
-      }
-
-      const nextBoard =
-          remainingBoards[Math.min(boardIndex, remainingBoards.length - 1)] ??
-          remainingBoards[0];
-
-      handleActiveBoardChange(nextBoard.id);
-      return true;
-    } catch (error) {
-      if (!handleUnauthorizedSession(error)) {
-        console.error(error);
-      }
-      return false;
+    if (confirmDelete) {
+      resetAppState();
     }
   }
 
@@ -578,15 +391,6 @@ function App() {
     };
   }
 
-  const hasBoards = boardList.length > 0;
-  const isBoardReady =
-      activeBoardId != null &&
-      Number(activeBoard?.id) === Number(activeBoardId) &&
-      Array.isArray(activeBoard?.columns);
-  const isBootstrappingWorkspace =
-      Boolean(authToken) &&
-      (!hasLoadedBoards || isLoadingBoards || (hasBoards && activeBoardId != null && !isBoardReady));
-  const canCreateCards = hasBoards && isBoardReady;
   const selectedCardDetails = activeBoard?.columns
       ?.flatMap((column) =>
           column.cards.map((card) => ({
@@ -643,7 +447,7 @@ function App() {
                     className="delete-board-button"
                     type="button"
                     disabled={!hasBoards}
-                    onClick={handleDeleteBoard}
+                    onClick={handleDeleteBoardandReset}
                 >
                   <FontAwesomeIcon icon={faTrashCan} />
                   Delete Board
@@ -652,12 +456,12 @@ function App() {
             </div>
 
             <div className="nav-bar-right">
-              <button onClick={handleLogout}>Log Out</button>
+              <button onClick={handleAppLogout}>Log Out</button>
             </div>
           </div>
 
           <BoardModal display={showCreateBoard} onClose={handleCloseCreateBoard}
-                      onSubmit={handleCreateBoard} />
+                      onSubmit={handleCreateBoardandClose} />
 
           <CardModal display={showCreateCard} onClose={handleCloseCreateCard}
                      onSubmit={handleCreateCard} />
